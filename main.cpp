@@ -3,6 +3,12 @@
 
 using namespace std;
 
+class WorkingDateTime;
+class Database;
+class Employee;
+class SalaryConfig;
+class Team;
+
 enum ProficiencyLevel {
     JUNIOR,
     EXPERT,
@@ -10,42 +16,16 @@ enum ProficiencyLevel {
     TEAM_LEAD
 };
 
-class Database {
-private:
-    vector<Employee> employees;
-    vector<SalaryConfig> salary_configs;
-    vector<Team> teams;
-public:
-    SalaryConfig get_salary_config(ProficiencyLevel level) {
-        for (SalaryConfig config : salary_configs)
-            if (config.get_level() == level)
-                return config;
-    }
-
-    Employee get_employee(int id) {
-        for (Employee employee : employees)
-            if (employee.get_id() == id)
-                return employee;
-    }
-
-    Team get_team(int id) {
-        for (Team team : teams)
-            if (team.get_id() == id)
-                return team;
-    }
-
-    vector<Employee> get_employees() { return employees; }
-
-    int get_total_working_hours_of_day(int day) {
-        int total_hours = 0;
-        for (Employee employee : employees)
-            if (employee.does_work_on_day(day))
-                total_hours += employee.get_total_working_hours();
-        return total_hours;
-    }
-};
-
 typedef pair<int, int> TimeRange;
+
+class WorkingDateTime {
+private:
+    int day;
+    TimeRange time_range;
+public:
+    int get_day() { return day; }
+    int get_length() { return time_range.second - time_range.first; }
+};
 
 class SalaryConfig {
 private:
@@ -64,7 +44,7 @@ public:
         }
         if (total_working_hours > official_working_hours)
             salary += (total_working_hours - official_working_hours) * salary_per_extra_hour;
-
+        
         return salary;
     }
     int apply_tax(int salary) {
@@ -89,6 +69,25 @@ public:
     }
 };
 
+class Database {
+private:
+    vector<Employee> employees;
+    vector<SalaryConfig> salary_configs;
+    vector<Team> teams;
+public:
+    SalaryConfig get_salary_config(ProficiencyLevel level) {
+        for (SalaryConfig config : salary_configs)
+            if (config.get_level() == level)
+                return config;
+    }
+
+    Employee get_employee(int id);
+    Team get_team(int id);
+    vector<Employee> get_employees();
+    int get_total_working_hours_of_day(int day);
+    
+};
+
 class Employee {
 private:
     int id;
@@ -102,19 +101,19 @@ private:
 
     int salary;
     int total_earning;
-
-    int calculate_salary() {
-        return get_salary_config(level).calculate(working_date_times);
+    
+    int calculate_salary(Database db) {
+        return db.get_salary_config(level).calculate(working_date_times);
     }
 public:
-    Employee( int id, string name,int age, ProficiencyLevel level) {
+    Employee( int id, string name,int age, ProficiencyLevel level, Database db) {
         id = id;
         name = name;
         age = age;
         level = level;
         team_id = -1;
-        salary = calculate_salary();
-        total_earning = get_salary_config(level).apply_tax(salary);
+        salary = calculate_salary(db);
+        total_earning = db.get_salary_config(level).apply_tax(salary);
     }
     bool has_team() { return team_id != -1; }
     void delete_working_hours(int day) {
@@ -125,12 +124,10 @@ public:
     void add_working_date_time(WorkingDateTime working_date_time) {
         working_date_times.push_back(working_date_time);
     }
-    void add_to_team(Team team) {
-        team_id = team.get_id();
-    }
-    void recalculate_salary_and_earning() {
-        salary = calculate_salary();
-        total_earning = get_salary_config(level).apply_tax(salary);
+    void join_to_team(Team team);
+    void recalculate_salary_and_earning(Database db) {
+        salary = calculate_salary(db);
+        total_earning = db.get_salary_config(level).apply_tax(salary);
     }
     int get_total_working_hours() {
         int total_working_hours = 0;
@@ -142,6 +139,7 @@ public:
         for (WorkingDateTime working_date_time : working_date_times)
             if (working_date_time.get_day() == day)
                 return true;
+        
         return false;
     }
     int get_salary() { return salary; }
@@ -167,15 +165,6 @@ public:
     int get_number_of_absent_days() { return 30 - working_date_times.size(); }
 };
 
-class WorkingDateTime {
-private:
-    int day;
-    TimeRange time_range;
-public:
-    int get_day() { return day; }
-    int get_length() { return time_range.second - time_range.first; }
-};
-
 class Team {
 private:
     int id;
@@ -194,14 +183,13 @@ public:
     int get_team_head_id() { return team_head_id; }
     string get_head_member_name(Database db) { return db.get_employee(team_head_id).get_name(); }
     vector<Employee> get_employees(Database db) {
-        vector<Employee> members, employees = db.get_employees();;
+        vector<Employee> members, employees = db.get_employees();
         for (Employee employee : employees)
             if (employee.get_team_id() == id)
                 members.push_back(employee);
         return members;
     }
-    int get_number_of_members() { return get_employees().size(); }
-    int get_average_member_working_hours() { return get_total_working_hours() / get_number_of_members(); }
+    int get_number_of_members(Database db) { return get_employees(db).size(); }
     int get_total_working_hours(Database db) {
         int total_working_hours = 0;
         vector<Employee> employees = db.get_employees();
@@ -209,5 +197,31 @@ public:
             total_working_hours += employee.get_total_working_hours();
         return total_working_hours;
     }
+    int get_average_member_working_hours(Database db) { return get_total_working_hours(db) / get_number_of_members(db); }
     void update_bonus_percentage(int new_bonus_percentage) { bonus_percentage = new_bonus_percentage; }
 };
+
+// Defining bodies of methods that caused dependency loops
+Employee Database::get_employee(int id) {
+    for (Employee employee : employees)
+        if (employee.get_id() == id)
+            return employee;
+}
+Team Database::get_team(int id) {
+    for (Team team : teams)
+        if (team.get_id() == id)
+            return team;
+}
+int Database::get_total_working_hours_of_day(int day) {
+    int total_hours = 0;
+    for (Employee employee : employees)
+        if (employee.does_work_on_day(day))
+            total_hours += employee.get_total_working_hours();
+    return total_hours;
+}
+vector<Employee> Database::get_employees() { return employees; }
+void Employee::join_to_team(Team team) { team_id = team.get_id(); }
+
+int main() {
+    return 0;
+}

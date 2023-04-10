@@ -1,3 +1,4 @@
+#include <cstring>
 #include <stdexcept>
 #include <utility>
 #include<cassert>
@@ -6,6 +7,7 @@
 #include <vector>
 #include <map>
 #include <iostream>
+#include <sstream>
 
 using namespace std;
 
@@ -54,8 +56,8 @@ private:
     int day;
     TimeRange time_range;
 public:
-    WorkingDateTime(int day, TimeRange range){
-        day = day;
+    WorkingDateTime(int day_num, TimeRange range){
+        day = day_num;
         time_range = range;
     }
     int get_day() { return day; }
@@ -73,6 +75,7 @@ public:
     void add_config(SalaryConfig conf);
     void add_team(Team team);
     void handle_hour_data(Nigger data);
+    void report_salaries();
     Employee get_employee(int id);
     Employee* get_pointer_to_employee(int id);
     Team get_team(int id);
@@ -198,14 +201,19 @@ public:
         
         return false;
     }
-    int get_salary() { return salary; }
-    int get_total_earning() { return total_earning; }
-    int get_id() { return id; }
-    int get_age() { return age; }
-    int get_team_id() { return team_id; }
-    int get_tax_amount(Database db) { return db.get_salary_config(level).get_tax_amount(salary); }
-    string get_name() { return name; }
-    ProficiencyLevel get_level() { return level; }
+    int calculate_total_working_hours(){
+        int total = 0;
+        for(auto time : working_date_times)
+            total += time.get_length();
+        return total;
+    }   
+    void print_salary_report(){
+        cout << "ID: " << id << endl;
+        cout << "Name: " << name << endl; 
+        cout << "Total Working Hours: " << calculate_total_working_hours() << endl;   
+        cout << "Total Earning: " << total_earning << endl; 
+        cout << "---" << endl;
+    }
     string get_level_humanized() {
         switch (level) {
             case JUNIOR:
@@ -214,11 +222,53 @@ public:
                 return "expert";
             case SENIOR:
                 return "senior";
-            case TEAM_LEAD:
+            default:
                 return "team lead";
         }
     }
-    int get_number_of_absent_days() { return MONTH_DAY_COUNT - working_date_times.size(); }
+    int get_salary() { return salary; }
+    int get_total_earning() { return total_earning; }
+    int get_id() { return id; }
+    int get_age() { return age; }
+    int get_team_id() { return team_id; }
+    int get_tax_amount(Database db) { return db.get_salary_config(level).get_tax_amount(salary); }
+    int get_bonus(){
+        return 69420;//bonus bezan moz
+    }
+    int count_absent_days(){
+        bool is_present[MONTH_DAY_COUNT+5];
+        memset(is_present, 0, sizeof is_present);
+        for(WorkingDateTime working_date_time : working_date_times){
+            if(working_date_time.get_length())
+                is_present[working_date_time.get_day()] = 1;
+        }
+        int absent_days_count = 0;
+        for(int i = 1 ; i <= MONTH_DAY_COUNT ; i ++)
+            absent_days_count += !is_present[i];
+        return absent_days_count;
+    }
+    void print_team_id(){
+        if(team_id == NO_TEAM)
+            cout << "N/A";
+        else
+            cout << team_id;
+        cout << endl;
+    }
+    void print_detailed_salary_report(Database &db){
+        cout << "ID: " << get_id() << endl;
+        cout << "Name: " << get_name() << endl;
+        cout << "Age: " << get_age() << endl;
+        cout << "Level: " <<  get_level_humanized() << endl;
+        cout << "Team ID: ", print_team_id();
+        cout << "Total Working Hours: " << calculate_total_working_hours() << endl; 
+        cout << "Absent Days: " << count_absent_days() << endl;
+        cout << "Salary: " << get_salary() << endl; //gerd kon agha
+        cout << "Bonus: " << get_bonus() << endl; 
+        cout << "Tax: " << get_tax_amount(db) << endl;
+        cout << "Total Earning: " << total_earning << endl; 
+    }
+    string get_name() { return name; }
+    ProficiencyLevel get_level() { return level; }
 };
 
 vector<int> string_to_int_vector(const vector<string>& str_vector) {
@@ -308,6 +358,11 @@ void Database::add_team(Team team){
         get_pointer_to_employee(id)->join_team(teams.back());
 }
 
+void Database::report_salaries(){
+    for(auto employee: employees)
+        employee.print_salary_report();
+}
+
 TimeRange vector_to_pair(const vector<string>& int_vector) {
     return make_pair(stoi(int_vector[0]), stoi(int_vector[1]));
 }
@@ -316,7 +371,8 @@ void Database::handle_hour_data(Nigger data){
     int id = stoi(data["employee_id"]);
     int day = stoi(data["day"]);
     auto times = split(data["working_interval"], '-');
-    get_pointer_to_employee(id)->add_working_date_time(WorkingDateTime(day, vector_to_pair(times)));
+    auto new_day = WorkingDateTime(day, vector_to_pair(times));
+    get_pointer_to_employee(id)->add_working_date_time(new_day);
 }
 vector <Employee> Database::get_employees() { return employees; }
 void Employee::join_team(Team team) { team_id = team.get_id(); }
@@ -384,12 +440,29 @@ void get_working_hours_input(Database& db){
         db.handle_hour_data(make_map(hours_raw_info[0], hours_raw_info[i]));
 }
 
+void get_file_inputs(Database &db){
+    get_salary_configs(db);
+    get_employees_input(db);
+    get_teams_input(db);
+    get_working_hours_input(db);
+}
+
+void process_stdin_input(Database &db){
+    string new_line;
+    while(getline(cin, new_line)){
+        vector < string > words = split(new_line, ' ');
+        if(words.empty())
+            continue;
+        if(words.front() == "report_salaries")
+            db.report_salaries();
+        if(words.front() == "report_employee_salary")
+            db.get_pointer_to_employee(stoi(words[1]))->print_detailed_salary_report(db);
+    }
+}
 
 int main(){
     Database database;
-    get_salary_configs(database);
-    get_employees_input(database);
-    get_teams_input(database);
-    get_working_hours_input(database);
+    get_file_inputs(database);
+    process_stdin_input(database);
     return 0;
 }

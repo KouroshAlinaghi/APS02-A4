@@ -1,7 +1,18 @@
+#include<cassert>
+#include<fstream>
 #include <string>
 #include <vector>
+#include <map>
+#include <iostream>
 
 using namespace std;
+
+const string EMPLOYEES_FILE_NAME = "employees.csv";
+const string WORKING_HOURS_FILE_NAME = "working_hours.csv";
+const string TEAMS_FILE_NAME = "teams.csv";
+const string SALARY_CONFIGS_FILE_NAME = "salary_configs.csv";
+const int8_t NO_TEAM = -1;
+const int MONTH_DAY_COUNT = 30;
 
 class WorkingDateTime;
 class Database;
@@ -9,12 +20,26 @@ class Employee;
 class SalaryConfig;
 class Team;
 
+typedef map<string,string> Nigger;
+
 enum ProficiencyLevel {
     JUNIOR,
     EXPERT,
     SENIOR,
     TEAM_LEAD
 };
+
+vector <string> split(string str, char delimeter){
+    vector <string> res;
+    string cur = "";
+    for(char c : str)
+        if(c == delimeter)
+            res.push_back(cur), cur = "";
+        else
+            cur += c;
+    res.push_back(cur);
+    return res;
+}
 
 typedef pair<int, int> TimeRange;
 
@@ -27,6 +52,36 @@ public:
     int get_length() { return time_range.second - time_range.first; }
 };
 
+class Database {
+private:
+    vector <Employee> employees;
+    vector <SalaryConfig> salary_configs;
+    vector <Team> teams;
+public:
+    SalaryConfig get_salary_config(ProficiencyLevel level);
+    void add_employee(Employee employee);
+    void add_config(SalaryConfig conf);
+    void add_team(Team team);
+    Employee get_employee(int id);
+    Team get_team(int id);
+    vector <Employee> get_employees();
+    int get_total_working_hours_of_day(int day);
+};
+
+ProficiencyLevel get_level(string level){   
+    if(level == "team_lead"){
+        return TEAM_LEAD;
+    }
+    else if(level == "senior"){
+        return SENIOR;
+    }
+    else if(level == "expert"){
+        return EXPERT;
+    }
+    else{
+        return JUNIOR;
+    }
+}  
 class SalaryConfig {
 private:
     ProficiencyLevel level;
@@ -36,7 +91,7 @@ private:
     int official_working_hours;
     int tax_percentage;
 public:
-    int calculate(vector<WorkingDateTime> working_date_times) {
+    int calculate_raw_salary(vector <WorkingDateTime> working_date_times) {
         int salary = base_salary, total_working_hours = 0;
         for (WorkingDateTime working_date_time : working_date_times) {
             total_working_hours += working_date_time.get_length();
@@ -46,6 +101,14 @@ public:
             salary += (total_working_hours - official_working_hours) * salary_per_extra_hour;
         
         return salary;
+    }
+    SalaryConfig(Nigger salary_config){
+        base_salary = stoi(salary_config["base_salary"]);
+        salary_per_hour = stoi(salary_config["salary_per_hour"]);
+        salary_per_extra_hour = stoi(salary_config["salary_per_extra_hour"]);
+        official_working_hours = stoi(salary_config["official_working_hours"]);
+        tax_percentage = stoi(salary_config["tax_percentage"]);
+        level = ::get_level(salary_config["level"]);
     }
     int apply_tax(int salary) {
         return salary - get_tax_amount(salary);
@@ -69,25 +132,6 @@ public:
     }
 };
 
-class Database {
-private:
-    vector<Employee> employees;
-    vector<SalaryConfig> salary_configs;
-    vector<Team> teams;
-public:
-    SalaryConfig get_salary_config(ProficiencyLevel level) {
-        for (SalaryConfig config : salary_configs)
-            if (config.get_level() == level)
-                return config;
-    }
-
-    Employee get_employee(int id);
-    Team get_team(int id);
-    vector<Employee> get_employees();
-    int get_total_working_hours_of_day(int day);
-    
-};
-
 class Employee {
 private:
     int id;
@@ -95,7 +139,7 @@ private:
     int age;
     ProficiencyLevel level;
 
-    vector<WorkingDateTime> working_date_times;
+    vector <WorkingDateTime> working_date_times;
 
     int team_id;
 
@@ -103,21 +147,21 @@ private:
     int total_earning;
     
     int calculate_salary(Database db) {
-        return db.get_salary_config(level).calculate(working_date_times);
+        return db.get_salary_config(level).calculate_raw_salary(working_date_times);
     }
 public:
-    Employee( int id, string name,int age, ProficiencyLevel level, Database db) {
-        id = id;
-        name = name;
-        age = age;
-        level = level;
-        team_id = -1;
+    Employee (Nigger data, Database db){
+        id = stoi(data["id"]);
+        name = data["name"];
+        age = stoi(data["age"]);
+        level = ::get_level(data["level"]);
+        team_id = NO_TEAM;
         salary = calculate_salary(db);
         total_earning = db.get_salary_config(level).apply_tax(salary);
     }
-    bool has_team() { return team_id != -1; }
+    bool has_team() { return team_id != NO_TEAM; }
     void delete_working_hours(int day) {
-        for (int i = 0; i < working_date_times.size(); i++)
+        for (int i = 0; i < (int)working_date_times.size(); i++)
             if (working_date_times[i].get_day() == day)
                 working_date_times.erase(working_date_times.begin() + i);
     }
@@ -162,37 +206,49 @@ public:
                 return "team lead";
         }
     }
-    int get_number_of_absent_days() { return 30 - working_date_times.size(); }
+    int get_number_of_absent_days() { return MONTH_DAY_COUNT - working_date_times.size(); }
 };
+
+vector<int> string_to_int_vector(const vector<string>& str_vector) {
+    vector<int> int_vector;
+    for (const auto& str : str_vector) {
+        int_vector.push_back(stoi(str));
+    }
+    return int_vector;
+}
 
 class Team {
 private:
     int id;
     int team_head_id;
-
     int bonus_percentage;
     int bonus_min_working_hours;
+    vector<int> member_ids;
     double bonus_working_hours_max_variance;
 public:
-    Team(int id, int team_head_id) {
-        id = id;
-        team_head_id = team_head_id;
+    Team (Nigger data){
+        id = stoi(data["team_id"]);
+        team_head_id = stoi(data["team_head_id"]);
+        bonus_min_working_hours = stoi(data["bonus_min_working_hours"]);
+        bonus_working_hours_max_variance = stod(data["bonus_working_hours_max_variance"]);
+        member_ids = string_to_int_vector(split(data["member_ids"], '$'));
         bonus_percentage = 0;
     }
     int get_id() { return id; }
     int get_team_head_id() { return team_head_id; }
     string get_head_member_name(Database db) { return db.get_employee(team_head_id).get_name(); }
-    vector<Employee> get_employees(Database db) {
-        vector<Employee> members, employees = db.get_employees();
+    vector <Employee> get_employees(Database db) {
+        vector <Employee> members, employees = db.get_employees();
         for (Employee employee : employees)
             if (employee.get_team_id() == id)
                 members.push_back(employee);
         return members;
     }
+    vector<int> get_ids(){return member_ids;}
     int get_number_of_members(Database db) { return get_employees(db).size(); }
     int get_total_working_hours(Database db) {
         int total_working_hours = 0;
-        vector<Employee> employees = db.get_employees();
+        vector <Employee> employees = db.get_employees();
         for (Employee employee : employees)
             total_working_hours += employee.get_total_working_hours();
         return total_working_hours;
@@ -219,9 +275,82 @@ int Database::get_total_working_hours_of_day(int day) {
             total_hours += employee.get_total_working_hours();
     return total_hours;
 }
-vector<Employee> Database::get_employees() { return employees; }
+void Database::add_employee(Employee employee){
+    employees.push_back(employee);
+}
+void Database::add_config(SalaryConfig conf){
+    salary_configs.push_back(conf);
+}
+void Database::add_team(Nigger team_data){
+    teams.push_back(Team(team_data));
+    auto ids = teams.back().get_ids();
+    for(int id : ids)
+        
+}
+vector <Employee> Database::get_employees() { return employees; }
 void Employee::join_to_team(Team team) { team_id = team.get_id(); }
+SalaryConfig Database::get_salary_config(ProficiencyLevel level){
+    for (SalaryConfig config : salary_configs)
+        if (config.get_level() == level)
+            return config;
+}
 
-int main() {
+string read_next_line(ifstream& file){
+    string res;
+    getline(file, res);
+    return res;
+}
+
+typedef vector <vector <string>> StringTable;
+
+StringTable read_csv(string file_name){
+    ifstream file(file_name);
+    vector <string> new_line;
+    StringTable lines;
+    while(file.peek()){
+        new_line = split(read_next_line(file), ',');
+        lines.push_back(new_line);
+    }
+    return lines;
+}
+
+Nigger make_map(vector < string > keys, vector < string > values){
+    Nigger res;
+    assert(keys.size() == values.size());
+    for(int i = 0 ; i < (int)keys.size() ; i ++)
+        res[keys[i]] = values[i];
+    return res;
+}
+
+void get_employees_input(Database& db){
+    StringTable employees_raw_info = read_csv(EMPLOYEES_FILE_NAME);
+    for(int i = 1 ; i < (int)employees_raw_info.size() ; i ++)
+        db.add_employee(Employee(make_map(employees_raw_info[0], employees_raw_info[i]), db));
+}
+
+void get_salary_configs(Database& db){
+    StringTable configs_raw_info = read_csv(SALARY_CONFIGS_FILE_NAME);
+    for(int i = 1 ; i < (int)configs_raw_info.size() ; i ++)
+        db.add_config(SalaryConfig(make_map(configs_raw_info[0], configs_raw_info[i])));
+}
+
+void get_teams_input(Database& db){
+    StringTable teams_raw_info = read_csv(TEAMS_FILE_NAME);
+    for(int i = 1 ; i < (int)teams_raw_info.size() ; i ++)
+        db.add_team(make_map(teams_raw_info[0], teams_raw_info[i]));
+}
+
+void get_working_hours_input(Database& db){
+    StringTable hours_raw_info = read_csv(WORKING_HOURS_FILE_NAME);
+    for(int i = 1 ; i < (int)hours_raw_info.size() ; i ++)
+        db.add_hour(make_map(hours_raw_info[0], hours_raw_info[i]));
+}
+
+int main(){
+    Database database;
+    get_salary_configs(database);
+    get_employees_input(database);
+    get_teams_input(database);
+    get_working_hours_input(database);
     return 0;
 }

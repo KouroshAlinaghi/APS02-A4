@@ -9,10 +9,12 @@
 
 using namespace std;
 
-const string EMPLOYEES_FILE_NAME = "employees.csv";
-const string WORKING_HOURS_FILE_NAME = "working_hours.csv";
-const string TEAMS_FILE_NAME = "teams.csv";
-const string SALARY_CONFIGS_FILE_NAME = "salary_configs.csv";
+//remove csv/
+
+const string EMPLOYEES_FILE_NAME = "csv/employees.csv";
+const string WORKING_HOURS_FILE_NAME = "csv/working_hours.csv";
+const string TEAMS_FILE_NAME = "csv/teams.csv";
+const string SALARY_CONFIGS_FILE_NAME = "csv/salary_configs.csv";
 const int8_t NO_TEAM = -1;
 const int MONTH_DAY_COUNT = 30;
 
@@ -31,11 +33,13 @@ enum ProficiencyLevel {
     TEAM_LEAD
 };
 
+#define debug(x) cout << x, exit(0)
+
 vector <string> split(string str, char delimeter){
     vector <string> res;
     string cur = "";
     for(char c : str)
-        if(c == delimeter)
+        if(c == delimeter or c == '\r')
             res.push_back(cur), cur = "";
         else
             cur += c;
@@ -335,7 +339,7 @@ StringTable read_csv(string file_name){
     ifstream file(file_name);
     vector <string> new_line;
     StringTable lines;
-    while(file.peek()){
+    while(file.peek() != EOF){
         new_line = split(read_next_line(file), ',');
         lines.push_back(new_line);
     }
@@ -356,6 +360,12 @@ void get_employees_input(Database& db){
         db.add_employee(Employee(make_map(employees_raw_info[0], employees_raw_info[i]), db));
 }
 
+void ascii(string s){
+    for(char c : s)
+        cout << int(c) << ' ';
+    cout << endl;
+}
+
 void get_salary_configs(Database& db){
     StringTable configs_raw_info = read_csv(SALARY_CONFIGS_FILE_NAME);
     for(int i = 1 ; i < (int)configs_raw_info.size() ; i ++)
@@ -373,6 +383,7 @@ void get_working_hours_input(Database& db){
     for(int i = 1 ; i < (int)hours_raw_info.size() ; i ++)
         db.handle_hour_data(make_map(hours_raw_info[0], hours_raw_info[i]));
 }
+
 
 int main(){
     Database database;

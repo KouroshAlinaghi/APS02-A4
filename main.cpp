@@ -1,3 +1,5 @@
+#include <stdexcept>
+#include <utility>
 #include<cassert>
 #include<fstream>
 #include <string>
@@ -48,6 +50,10 @@ private:
     int day;
     TimeRange time_range;
 public:
+    WorkingDateTime(int day, TimeRange range){
+        day = day;
+        time_range = range;
+    }
     int get_day() { return day; }
     int get_length() { return time_range.second - time_range.first; }
 };
@@ -62,7 +68,9 @@ public:
     void add_employee(Employee employee);
     void add_config(SalaryConfig conf);
     void add_team(Team team);
+    void handle_hour_data(Nigger data);
     Employee get_employee(int id);
+    Employee* get_pointer_to_employee(int id);
     Team get_team(int id);
     vector <Employee> get_employees();
     int get_total_working_hours_of_day(int day);
@@ -168,7 +176,7 @@ public:
     void add_working_date_time(WorkingDateTime working_date_time) {
         working_date_times.push_back(working_date_time);
     }
-    void join_to_team(Team team);
+    void join_team(Team team);
     void recalculate_salary_and_earning(Database db) {
         salary = calculate_salary(db);
         total_earning = db.get_salary_config(level).apply_tax(salary);
@@ -262,11 +270,19 @@ Employee Database::get_employee(int id) {
     for (Employee employee : employees)
         if (employee.get_id() == id)
             return employee;
+    throw runtime_error("employee not found");
+}
+Employee* Database::get_pointer_to_employee(int id) {
+    for (Employee &employee : employees)
+        if (employee.get_id() == id)
+            return &employee;
+    throw runtime_error("employee (pointer) not found");
 }
 Team Database::get_team(int id) {
     for (Team team : teams)
         if (team.get_id() == id)
             return team;
+    throw runtime_error("team not found");
 }
 int Database::get_total_working_hours_of_day(int day) {
     int total_hours = 0;
@@ -281,18 +297,30 @@ void Database::add_employee(Employee employee){
 void Database::add_config(SalaryConfig conf){
     salary_configs.push_back(conf);
 }
-void Database::add_team(Nigger team_data){
-    teams.push_back(Team(team_data));
+void Database::add_team(Team team){
+    teams.push_back(team);
     auto ids = teams.back().get_ids();
     for(int id : ids)
-        
+        get_pointer_to_employee(id)->join_team(teams.back());
+}
+
+TimeRange vector_to_pair(const vector<string>& int_vector) {
+    return make_pair(stoi(int_vector[0]), stoi(int_vector[1]));
+}
+
+void Database::handle_hour_data(Nigger data){
+    int id = stoi(data["employee_id"]);
+    int day = stoi(data["day"]);
+    auto times = split(data["working_interval"], '-');
+    get_pointer_to_employee(id)->add_working_date_time(WorkingDateTime(day, vector_to_pair(times)));
 }
 vector <Employee> Database::get_employees() { return employees; }
-void Employee::join_to_team(Team team) { team_id = team.get_id(); }
+void Employee::join_team(Team team) { team_id = team.get_id(); }
 SalaryConfig Database::get_salary_config(ProficiencyLevel level){
     for (SalaryConfig config : salary_configs)
         if (config.get_level() == level)
             return config;
+    throw runtime_error("salary config not found");
 }
 
 string read_next_line(ifstream& file){
@@ -337,13 +365,13 @@ void get_salary_configs(Database& db){
 void get_teams_input(Database& db){
     StringTable teams_raw_info = read_csv(TEAMS_FILE_NAME);
     for(int i = 1 ; i < (int)teams_raw_info.size() ; i ++)
-        db.add_team(make_map(teams_raw_info[0], teams_raw_info[i]));
+        db.add_team(Team(make_map(teams_raw_info[0], teams_raw_info[i])));
 }
 
 void get_working_hours_input(Database& db){
     StringTable hours_raw_info = read_csv(WORKING_HOURS_FILE_NAME);
     for(int i = 1 ; i < (int)hours_raw_info.size() ; i ++)
-        db.add_hour(make_map(hours_raw_info[0], hours_raw_info[i]));
+        db.handle_hour_data(make_map(hours_raw_info[0], hours_raw_info[i]));
 }
 
 int main(){

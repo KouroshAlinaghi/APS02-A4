@@ -103,7 +103,8 @@ public:
     void update_salary_config(vector <string> input);
     void add_working_hours(int id, int day, int l, int r);
     void delete_working_hours(int id, int day);
-    void update_team_bonus(int id, int bonus);//bonus:todo
+    void update_team_bonus(int id, int bonus);
+    void recalculate_salaries();
 };
 
 ProficiencyLevel get_level(string level){   
@@ -152,9 +153,6 @@ public:
         tax_percentage = stoi(salary_config["tax_percentage"]);
         level = ::get_level(salary_config["level"]);
     }
-    int apply_tax(int salary) {
-        return salary - get_tax_amount(salary);
-    }
     int get_tax_amount(int salary) {
         return salary * tax_percentage / 100;
     }
@@ -189,7 +187,7 @@ private:
 
     int team_id;
 
-    int salary;
+    int raw_salary;
     int total_earning;
     
     int calculate_salary(Database db) {
@@ -202,8 +200,8 @@ public:
         age = stoi(data["age"]);
         level = ::get_level(data["level"]);
         team_id = NO_TEAM;
-        salary = calculate_salary(db);
-        total_earning = db.get_salary_config(level).apply_tax(salary);
+        raw_salary = calculate_salary(db);
+        total_earning = raw_salary - get_tax_amount(db) + get_bonus_amount(db);
     }
     bool has_team() { return team_id != NO_TEAM; }
     void delete_working_hours(int day) {
@@ -219,8 +217,7 @@ public:
     }
     void join_team(Team team);
     void recalculate_salary_and_earning(Database db) {
-        salary = calculate_salary(db);
-        total_earning = db.get_salary_config(level).apply_tax(salary);
+        total_earning = raw_salary - get_tax_amount(db) + get_bonus_amount(db);
     }
     int get_total_working_hours() {
         int total_working_hours = 0;
@@ -260,15 +257,13 @@ public:
                 return "team lead";
         }
     }
-    int get_salary() { return salary; }
+    int get_raw_salary() { return raw_salary; }
     int get_total_earning() { return total_earning; }
     int get_id() { return id; }
     int get_age() { return age; }
     int get_team_id() { return team_id; }
-    int get_tax_amount(Database db) { return db.get_salary_config(level).get_tax_amount(salary); }
-    int get_bonus(){
-        return 69420;//bonus bezan moz
-    }
+    int get_tax_amount(Database db) { return db.get_salary_config(level).get_tax_amount(raw_salary); }
+    int get_bonus_amount(Database db);
     int count_absent_days(){
         bool is_present[MONTH_DAY_COUNT+5];
         memset(is_present, 0, sizeof is_present);
@@ -296,8 +291,8 @@ public:
         cout << "Team ID: ", print_team_id();
         cout << "Total Working Hours: " << calculate_total_working_hours() << endl; 
         cout << "Absent Days: " << count_absent_days() << endl;
-        cout << "Salary: " << get_salary() << endl; //gerd kon agha
-        cout << "Bonus: " << get_bonus() << endl; 
+        cout << "Salary: " << get_raw_salary() << endl; //gerd kon agha
+        cout << "Bonus: " << get_bonus_amount(db) << endl; 
         cout << "Tax: " << get_tax_amount(db) << endl;
         cout << "Total Earning: " << total_earning << endl; 
     }
@@ -358,7 +353,7 @@ public:
     int get_average_member_working_hours(Database db) { return get_total_working_hours(db) / get_number_of_members(db); }
     void update_bonus_percentage(int new_bonus_percentage) { bonus_percentage = new_bonus_percentage; }
     void report_salary(Database db);
-    int get_bonus(){return 69420;};//TODO
+    int get_bonus_percentage() { return bonus_percentage; }
 };
 
 // Defining bodies of methods that caused dependency loops
@@ -498,13 +493,23 @@ void Team::report_salary(Database db){
     cout << "Head Name: " << db.get_employee(team_head_id).get_name() << endl;
     cout << "Team Total Working Hours: " << get_total_working_hours(db) << endl;
     cout << "Average Member Working Hour: " << get_average_member_working_hours(db) << endl;
-    cout << "Bonus: " << get_bonus() << endl;
+    cout << "Bonus: " << get_bonus_percentage() << endl;
     cout << "---" << endl;
     for(int id : member_ids){
         cout << "Member ID: " << id << endl;
         cout << "Total Earning: " << db.get_employee(id).get_total_earning() << endl;
         cout << "---" << endl;  
     }
+}
+
+int Employee::get_bonus_amount(Database db) {
+    if (!has_team()) return 0;
+    return raw_salary * db.get_team(team_id).get_bonus_percentage() / 100;
+}
+
+void Database::recalculate_salaries() {
+    for (auto& emp : employees)
+        emp.recalculate_salary_and_earning(*this);
 }
 void Database::update_salary_config(vector<string> input){  
     SalaryConfig* conf;  
@@ -661,6 +666,8 @@ void process_stdin_input(Database &db){
             db.delete_working_hours(stoi(words[1]), stoi(words[2]));
         if(words.front() == "update_team_bonus")
             db.update_team_bonus(stoi(words[1]), stoi(words[2]));
+
+        db.recalculate_salaries();
     }
 }
 

@@ -28,6 +28,7 @@ class SalaryConfig;
 class Team;
 
 typedef map<string,string> Nigger;
+typedef vector <vector <string>> StringTable;
 
 enum ProficiencyLevel {
     JUNIOR,
@@ -63,6 +64,17 @@ public:
     }
     int get_day() { return day; }
     int get_length() { return time_range.second - time_range.first; }
+    int get_start(){return time_range.first;}
+    int get_end(){return time_range.second;}
+    bool overlaps(WorkingDateTime time){
+        if(time.get_day() != day)
+            return false;
+        if(time_range.first >= time.get_end()) 
+            return false;
+        if(time_range.second <= time.get_start())
+            return false;
+        return true;
+    }
 };
 
 class Database {
@@ -89,6 +101,9 @@ public:
     void report_total_hours_in_range(int l, int r);
     void print_salary_config(string level_name);
     void update_salary_config(vector <string> input);
+    void add_working_hours(int id, int day, int l, int r);
+    void delete_working_hours(int id, int day);
+    void update_team_bonus(int id, int bonus);//bonus:todo
 };
 
 ProficiencyLevel get_level(string level){   
@@ -106,6 +121,9 @@ ProficiencyLevel get_level(string level){
     }
     throw runtime_error("level not found");
 }  
+bool is_invalid_day(int day){
+    return day < 1 or day > MONTH_DAY_COUNT;
+}
 class SalaryConfig {
 private:
     ProficiencyLevel level;
@@ -189,9 +207,12 @@ public:
     }
     bool has_team() { return team_id != NO_TEAM; }
     void delete_working_hours(int day) {
-        for (int i = 0; i < (int)working_date_times.size(); i++)
-            if (working_date_times[i].get_day() == day)
-                working_date_times.erase(working_date_times.begin() + i);
+        vector <WorkingDateTime> result;
+        for(auto time : working_date_times){
+            if(time.get_day() != day)
+                result.push_back(time);
+        }
+        working_date_times = result;
     }
     void add_working_date_time(WorkingDateTime working_date_time) {
         working_date_times.push_back(working_date_time);
@@ -282,6 +303,12 @@ public:
     }
     string get_name() { return name; }
     ProficiencyLevel get_level() { return level; }
+    bool is_busy(WorkingDateTime cur_time){
+        for(auto time : working_date_times)
+            if(time.overlaps(cur_time))
+                return 1;
+        return 0;
+    }
 };
 
 vector<int> string_to_int_vector(const vector<string>& str_vector) {
@@ -494,15 +521,73 @@ void Database::update_salary_config(vector<string> input){
     if(input[4] != "-")conf->set_official_working_hours(stoi(input[4]));
     if(input[5] != "-")conf->set_tax_percentage(stoi(input[5]));
     cout << "OK" << endl;
-}   
+}
+bool is_invalid_time_range(int l, int r){
+    if(r < l)
+        return 1;
+    if(l < 0)
+        return 1;
+    if(r > 24)
+        return 1;
+    return 0;
+}
+void Database::add_working_hours(int id, int day, int l, int r){
+    Employee* emp;
+    try{
+        emp = get_pointer_to_employee(id);
+    }
+    catch(exception &e){
+        cout << "EMPLOYEE_NOT_FOUND" << endl;
+        return;
+    }
+    if(is_invalid_time_range(l, r) or is_invalid_day(day)){
+        cout << "INVALID_ARGUMENTS" << endl;
+        return;
+    }
+    if(emp->is_busy(WorkingDateTime(day, {l, r}))) {
+        cout << "INVALID_INTERVAL" << endl;
+        return;
+    }
+    emp->add_working_date_time(WorkingDateTime(day, {l, r}));
+    cout << "OK" << endl;
+}
+bool is_valid_percentage(int x){
+    return x>=0 and x <= 100;
+}
+void Database::update_team_bonus(int team_id, int bonus) {
+    if(!is_valid_percentage(bonus)){
+        cout << "INVALID_ARGUMENTS" << endl;
+    }   
+    try{
+        get_pointer_to_team(team_id)->update_bonus_percentage(bonus);
+    }
+    catch(exception& e){
+        cout << "TEAM_NOT_FOUND" << endl;
+        return;
+    }
+    cout << "OK" << endl;
+}
 string read_next_line(ifstream& file){
     string res;
     getline(file, res);
     return res;
 }
-
-typedef vector <vector <string>> StringTable;
-
+void Database::delete_working_hours(int id, int day){
+    Employee* emp;
+    try{
+        emp = get_pointer_to_employee(id);
+    }
+    catch(exception &e){
+        cout << "EMPLOYEE_NOT_FOUND" << endl;
+        return;
+    }
+    if(is_invalid_day(day)){
+        cout << "INVALID_ARGUMENTS" << endl;
+        return;
+    }
+    emp->delete_working_hours(day);
+    cout << "OK" << endl;
+}
 StringTable read_csv(string file_name){
     ifstream file(file_name);
     vector <string> new_line;
@@ -526,12 +611,6 @@ void get_employees_input(Database& db){
     StringTable employees_raw_info = read_csv(EMPLOYEES_FILE_NAME);
     for(int i = 1 ; i < (int)employees_raw_info.size() ; i ++)
         db.add_employee(Employee(make_map(employees_raw_info[0], employees_raw_info[i]), db));
-}
-
-void ascii(string s){
-    for(char c : s)
-        cout << int(c) << ' ';
-    cout << endl;
 }
 
 void get_salary_configs(Database& db){
@@ -565,7 +644,7 @@ void process_stdin_input(Database &db){
         if(words.front() == "report_salaries")
             db.report_salaries();
         if(words.front() == "report_employee_salary")
-                db.report_salary(stoi(words[1]));
+            db.report_salary(stoi(words[1]));
         if(words.front() == "report_team_salary")
             db.report_team_salary(stoi(words[1]));
         if(words.front() == "report_total_hours_per_day")
@@ -576,7 +655,12 @@ void process_stdin_input(Database &db){
             db.print_salary_config(words[1]);
         if(words.front() == "update_salary_config")
             db.update_salary_config(vector<string>(words.begin()+1, words.end()));
-               
+        if(words.front() == "add_working_hours")
+            db.add_working_hours(stoi(words[1]), stoi(words[2]), stoi(words[3]), stoi(words[4]));
+        if(words.front() == "delete_working_hours")
+            db.delete_working_hours(stoi(words[1]), stoi(words[2]));
+        if(words.front() == "update_team_bonus")
+            db.update_team_bonus(stoi(words[1]), stoi(words[2]));
     }
 }
 
@@ -584,5 +668,6 @@ int main(){
     Database database;
     get_file_inputs(database);
     process_stdin_input(database);
+    //todo: recalc :༒
     return 0;
 }

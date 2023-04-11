@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 #include <stdexcept>
 #include <utility>
@@ -71,6 +72,7 @@ private:
     vector <Team> teams;
 public:
     SalaryConfig get_salary_config(ProficiencyLevel level);
+    SalaryConfig* get_pointer_to_salary_config(ProficiencyLevel level);
     void add_employee(Employee employee);
     void add_config(SalaryConfig conf);
     void add_team(Team team);
@@ -84,21 +86,25 @@ public:
     Team* get_pointer_to_team(int id);
     vector <Employee> get_employees();
     int get_total_working_hours_of_day(int day);
+    void report_total_hours_in_range(int l, int r);
+    void print_salary_config(string level_name);
+    void update_salary_config(vector <string> input);
 };
 
 ProficiencyLevel get_level(string level){   
     if(level == "team_lead"){
         return TEAM_LEAD;
     }
-    else if(level == "senior"){
+    if(level == "senior"){
         return SENIOR;
     }
-    else if(level == "expert"){
+    if(level == "expert"){
         return EXPERT;
     }
-    else{
+    if(level == "junior"){
         return JUNIOR;
     }
+    throw runtime_error("level not found");
 }  
 class SalaryConfig {
 private:
@@ -140,13 +146,17 @@ public:
     int get_salary_per_extra_hour() { return salary_per_extra_hour; }
     int get_official_working_hours() { return official_working_hours; }
     int get_tax_percentage() { return tax_percentage; }
-    void update_configs(ProficiencyLevel level, int base_salary, int salary_per_hour, int salary_per_extra_hour, int official_working_hours, int tax_percentage) {
-        level = level;
-        base_salary = base_salary;
-        salary_per_hour = salary_per_hour;
-        salary_per_extra_hour = salary_per_extra_hour;
-        official_working_hours = official_working_hours;
-        tax_percentage = tax_percentage;
+    void set_base_salary(int x) { base_salary = x; }
+    void set_salary_per_hour(int x) { salary_per_hour = x; }
+    void set_salary_per_extra_hour(int x) { salary_per_extra_hour = x; }
+    void set_official_working_hours(int x) { official_working_hours = x; }
+    void set_tax_percentage(int x) { tax_percentage = x; }
+    void print_config(){
+        cout << "Base Salary: " << base_salary << endl;
+        cout << "Salary Per Hour: " << salary_per_hour << endl;
+        cout << "Salary Per Extra Hour: " << salary_per_extra_hour << endl;
+        cout << "Official Working Hours: " << official_working_hours << endl;
+        cout << "Tax: " << tax_percentage << '%' << endl;
     }
 };
 
@@ -368,7 +378,6 @@ void Database::add_team(Team team){
     for(int id : ids)
         get_pointer_to_employee(id)->join_team(teams.back());
 }
-
 void Database::report_salaries(){
     for(auto employee: employees)
         employee.print_salary_report();
@@ -401,12 +410,59 @@ void Database::report_team_salary(int team_id){
         cout << "TEAM_NOT_FOUND" << endl;
     }
 }
+bool is_invalid_date_range(int l, int r){
+    if(r < l)
+        return 1;
+    if(l < 1)
+        return 1;
+    if(r > MONTH_DAY_COUNT)
+        return 1;
+    return 0;
+}
+void Database::report_total_hours_in_range(int l, int r){
+    if(is_invalid_date_range(l, r)){
+        cout << "IVALID_ARGUMENTS" << endl;
+        return;
+    }
+    int total_working_hours[MONTH_DAY_COUNT + 5];
+    memset(total_working_hours, 0, sizeof total_working_hours);
+    for(int day = l, indx = 1 ; day <= r ; day ++, indx++)
+        total_working_hours[day] = get_total_working_hours_of_day(day),
+        cout << "DAY #" << indx << ": " << total_working_hours[day] << endl;
+    cout << "---" << endl;
+    int max_working_hours = *max_element(total_working_hours + l, total_working_hours + r + 1);
+    int min_working_hours = *min_element(total_working_hours + l, total_working_hours + r + 1);
+    cout << "Day(s) with Max Working Hours: ";
+    for(int day = l ; day <= r ; day ++)
+        if(total_working_hours[day] == max_working_hours)
+            cout << day << ' ';
+    cout << endl;
+    cout << "Day(s) with Min Working Hours: ";
+    for(int day = l ; day <= r ; day ++)
+        if(total_working_hours[day] == min_working_hours)
+            cout << day << ' ';
+    cout << endl;
+}
+void Database::print_salary_config(string level_name){
+    try{
+        get_salary_config(::get_level(level_name)).print_config();
+    }
+    catch(exception &e){
+        cout << "INVALID_LEVEL" << endl;
+    }
+}
 vector <Employee> Database::get_employees() { return employees; }
 void Employee::join_team(Team team) { team_id = team.get_id(); }
 SalaryConfig Database::get_salary_config(ProficiencyLevel level){
     for (SalaryConfig config : salary_configs)
         if (config.get_level() == level)
             return config;
+    throw runtime_error("salary config not found");
+}
+SalaryConfig* Database::get_pointer_to_salary_config(ProficiencyLevel level){
+    for (SalaryConfig& config : salary_configs)
+        if (config.get_level() == level)
+            return &config;
     throw runtime_error("salary config not found");
 }
 void Team::report_salary(Database db){
@@ -423,6 +479,22 @@ void Team::report_salary(Database db){
         cout << "---" << endl;  
     }
 }
+void Database::update_salary_config(vector<string> input){  
+    SalaryConfig* conf;  
+    try{
+        conf = get_pointer_to_salary_config(::get_level(input[0]));
+    } 
+    catch(exception &e){
+        cout << "INVALID_LEVEL" << endl;
+        return;
+    }   
+    if(input[1] != "-")conf->set_base_salary(stoi(input[1]));
+    if(input[2] != "-")conf->set_salary_per_hour(stoi(input[2]));
+    if(input[3] != "-")conf->set_salary_per_extra_hour(stoi(input[3]));
+    if(input[4] != "-")conf->set_official_working_hours(stoi(input[4]));
+    if(input[5] != "-")conf->set_tax_percentage(stoi(input[5]));
+    cout << "OK" << endl;
+}   
 string read_next_line(ifstream& file){
     string res;
     getline(file, res);
@@ -473,20 +545,17 @@ void get_teams_input(Database& db){
     for(int i = 1 ; i < (int)teams_raw_info.size() ; i ++)
         db.add_team(Team(make_map(teams_raw_info[0], teams_raw_info[i])));
 }
-
 void get_working_hours_input(Database& db){
     StringTable hours_raw_info = read_csv(WORKING_HOURS_FILE_NAME);
     for(int i = 1 ; i < (int)hours_raw_info.size() ; i ++)
         db.handle_hour_data(make_map(hours_raw_info[0], hours_raw_info[i]));
 }
-
 void get_file_inputs(Database &db){
     get_salary_configs(db);
     get_employees_input(db);
     get_teams_input(db);
     get_working_hours_input(db);
 }
-
 void process_stdin_input(Database &db){
     string new_line;
     while(getline(cin, new_line)){
@@ -499,6 +568,15 @@ void process_stdin_input(Database &db){
                 db.report_salary(stoi(words[1]));
         if(words.front() == "report_team_salary")
             db.report_team_salary(stoi(words[1]));
+        if(words.front() == "report_total_hours_per_day")
+            db.report_total_hours_in_range(stoi(words[1]), stoi(words[2]));
+        if(words.front() == "report_employee_per_hour")
+            cout << "Meow" << endl; //TODO
+        if(words.front() == "show_salary_config")
+            db.print_salary_config(words[1]);
+        if(words.front() == "update_salary_config")
+            db.update_salary_config(vector<string>(words.begin()+1, words.end()));
+               
     }
 }
 

@@ -76,9 +76,12 @@ public:
     void add_team(Team team);
     void handle_hour_data(Nigger data);
     void report_salaries();
+    void report_salary(int id);
+    void report_team_salary(int id);
     Employee get_employee(int id);
     Employee* get_pointer_to_employee(int id);
     Team get_team(int id);
+    Team* get_pointer_to_team(int id);
     vector <Employee> get_employees();
     int get_total_working_hours_of_day(int day);
 };
@@ -317,6 +320,8 @@ public:
     }
     int get_average_member_working_hours(Database db) { return get_total_working_hours(db) / get_number_of_members(db); }
     void update_bonus_percentage(int new_bonus_percentage) { bonus_percentage = new_bonus_percentage; }
+    void report_salary(Database db);
+    int get_bonus(){return 69420;};//TODO
 };
 
 // Defining bodies of methods that caused dependency loops
@@ -336,6 +341,12 @@ Team Database::get_team(int id) {
     for (Team team : teams)
         if (team.get_id() == id)
             return team;
+    throw runtime_error("team not found");
+}
+Team* Database::get_pointer_to_team(int id) {
+    for (Team &team : teams)
+        if (team.get_id() == id)
+            return &team;
     throw runtime_error("team not found");
 }
 int Database::get_total_working_hours_of_day(int day) {
@@ -374,6 +385,22 @@ void Database::handle_hour_data(Nigger data){
     auto new_day = WorkingDateTime(day, vector_to_pair(times));
     get_pointer_to_employee(id)->add_working_date_time(new_day);
 }
+void Database::report_salary(int id){
+    try{
+        get_pointer_to_employee(id)->print_detailed_salary_report(*this);
+    }
+    catch(exception& e){
+        cout << "EMPLOYEE_NOT_FOUND" << endl;
+    }
+}
+void Database::report_team_salary(int team_id){
+    try{
+        get_pointer_to_team(team_id)->report_salary(*this);
+    }
+    catch(exception& e){
+        cout << "TEAM_NOT_FOUND" << endl;
+    }
+}
 vector <Employee> Database::get_employees() { return employees; }
 void Employee::join_team(Team team) { team_id = team.get_id(); }
 SalaryConfig Database::get_salary_config(ProficiencyLevel level){
@@ -382,7 +409,20 @@ SalaryConfig Database::get_salary_config(ProficiencyLevel level){
             return config;
     throw runtime_error("salary config not found");
 }
-
+void Team::report_salary(Database db){
+    cout << "ID: " << id << endl;
+    cout << "Head ID: " << team_head_id << endl;
+    cout << "Head Name: " << db.get_employee(team_head_id).get_name() << endl;
+    cout << "Team Total Working Hours: " << get_total_working_hours(db) << endl;
+    cout << "Average Member Working Hour: " << get_average_member_working_hours(db) << endl;
+    cout << "Bonus: " << get_bonus() << endl;
+    cout << "---" << endl;
+    for(int id : member_ids){
+        cout << "Member ID: " << id << endl;
+        cout << "Total Earning: " << db.get_employee(id).get_total_earning() << endl;
+        cout << "---" << endl;  
+    }
+}
 string read_next_line(ifstream& file){
     string res;
     getline(file, res);
@@ -456,7 +496,9 @@ void process_stdin_input(Database &db){
         if(words.front() == "report_salaries")
             db.report_salaries();
         if(words.front() == "report_employee_salary")
-            db.get_pointer_to_employee(stoi(words[1]))->print_detailed_salary_report(db);
+                db.report_salary(stoi(words[1]));
+        if(words.front() == "report_team_salary")
+            db.report_team_salary(stoi(words[1]));
     }
 }
 

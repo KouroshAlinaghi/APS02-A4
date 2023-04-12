@@ -190,7 +190,7 @@ private:
     int raw_salary;
     int total_earning;
     
-    int calculate_salary(Database db) {
+    int calculate_raw_salary(Database db) {
         return db.get_salary_config(level).calculate_raw_salary(working_date_times);
     }
 public:
@@ -200,7 +200,7 @@ public:
         age = stoi(data["age"]);
         level = ::get_level(data["level"]);
         team_id = NO_TEAM;
-        raw_salary = calculate_salary(db);
+        raw_salary = calculate_raw_salary(db);
         total_earning = raw_salary - get_tax_amount(db) + get_bonus_amount(db);
     }
     bool has_team() { return team_id != NO_TEAM; }
@@ -262,7 +262,9 @@ public:
     int get_id() { return id; }
     int get_age() { return age; }
     int get_team_id() { return team_id; }
-    int get_tax_amount(Database db) { return db.get_salary_config(level).get_tax_amount(raw_salary); }
+    int get_tax_amount(Database db) {
+        return db.get_salary_config(level).get_tax_amount(raw_salary+get_bonus_amount(db));
+    }
     int get_bonus_amount(Database db);
     int count_absent_days(){
         bool is_present[MONTH_DAY_COUNT+5];

@@ -445,7 +445,7 @@ bool is_invalid_date_range(int l, int r){
 }
 void Database::report_total_hours_in_range(int l, int r){
     if(is_invalid_date_range(l, r)){
-        cout << "IVALID_ARGUMENTS" << endl;
+        cout << "INVALID_ARGUMENTS" << endl;
         return;
     }
     int total_working_hours[MONTH_DAY_COUNT + 5];

@@ -1,3 +1,4 @@
+#include <iomanip>
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
@@ -105,6 +106,10 @@ public:
     void delete_working_hours(int id, int day);
     void update_team_bonus(int id, int bonus);
     void recalculate_salaries();
+    void report_employee_per_hour(int l, int r);
+    int count_busy_employees(TimeRange time);
+    int min_value_in_map(map<TimeRange,int>);
+    int max_value_in_map(map<TimeRange,int>);
 };
 
 ProficiencyLevel get_level(string level){   
@@ -530,7 +535,7 @@ void Database::update_salary_config(vector<string> input){
     cout << "OK" << endl;
 }
 bool is_invalid_time_range(int l, int r){
-    if(r < l)
+    if(r <= l)
         return 1;
     if(l < 0)
         return 1;
@@ -595,6 +600,50 @@ void Database::delete_working_hours(int id, int day){
     emp->delete_working_hours(day);
     cout << "OK" << endl;
 }
+
+int Database::count_busy_employees(TimeRange time){
+    int cnt = 0;
+    for(int day = 1 ; day <= MONTH_DAY_COUNT ; day ++)
+        for(auto emp : employees)
+            cnt += emp.is_busy({day, time});
+    return cnt;
+}
+int Database::max_value_in_map(map<TimeRange, int> mp){
+    return max_element(mp.begin(), mp.end(), [](auto x, auto y){return x.second < y.second;})->second;
+}
+int Database::min_value_in_map(map<TimeRange, int> mp){
+    return min_element(mp.begin(), mp.end(), [](auto x, auto y){return x.second < y.second;})->second;
+}
+void Database::report_employee_per_hour(int l, int r){
+    if(::is_invalid_time_range(l, r)){
+        cout << "INVALID_ARGUMENTS" << endl;
+        return;
+    }
+    map<TimeRange,int> working_cnt;
+    for(int start = l ; start < r ; start ++){
+        TimeRange cur_time = {start, start+1};
+        working_cnt[cur_time] = count_busy_employees(cur_time);
+        cout << start << '-' << start+1 << ": ";
+        cout << fixed << setprecision(1) << double(working_cnt[cur_time])/MONTH_DAY_COUNT;
+        cout << endl;
+    }
+    cout << "---" << endl;
+    int max_cnt = max_value_in_map(working_cnt);
+    int min_cnt = min_value_in_map(working_cnt);
+    cout << "Period(s) with Max Working Employees: ";
+    for(int start = l ; start < r ; start ++){
+        TimeRange cur_time = {start, start+1};
+        if(working_cnt[cur_time] == max_cnt)
+            cout << start << '-' << start + 1 << ' ';
+    }
+    cout << endl << "Period(s) with Min Working Employees: ";
+    for(int start = l ; start < r ; start ++){
+        TimeRange cur_time = {start, start+1};
+        if(working_cnt[cur_time] == min_cnt)
+            cout << start << '-' << start + 1 << ' ';
+    }
+    cout << endl;
+}
 StringTable read_csv(string file_name){
     ifstream file(file_name);
     vector <string> new_line;
@@ -657,7 +706,7 @@ void process_stdin_input(Database &db){
         if(words.front() == "report_total_hours_per_day")
             db.report_total_hours_in_range(stoi(words[1]), stoi(words[2]));
         if(words.front() == "report_employee_per_hour")
-            cout << "Meow" << endl; //TODO
+            db.report_employee_per_hour(stoi(words[1]), stoi(words[2]));
         if(words.front() == "show_salary_config")
             db.print_salary_config(words[1]);
         if(words.front() == "update_salary_config")
@@ -677,6 +726,5 @@ int main(){
     Database database;
     get_file_inputs(database);
     process_stdin_input(database);
-    //todo: recalc :༒
     return 0;
 }

@@ -110,6 +110,10 @@ public:
     int count_busy_employees(TimeRange time);
     int min_value_in_map(map<TimeRange,int>);
     int max_value_in_map(map<TimeRange,int>);
+    void find_teams_for_bonus(Database &db);
+    int get_total_working_hours_of_employee(int id);
+    double calculate_avg(vector < int > vals);
+    double calculate_variance(vector < int > vals);
 };
 
 ProficiencyLevel get_level(string level){   
@@ -350,95 +354,20 @@ public:
     }
     vector<int> get_ids(){return member_ids;}
     int get_number_of_members(Database db) { return get_employees(db).size(); }
-    int get_total_working_hours(Database db) {
-        int total_working_hours = 0;
-        vector <Employee> employees = db.get_employees();
-        for (Employee employee : employees)
-            total_working_hours += employee.get_total_working_hours();
-        return total_working_hours;
-    }
+    int get_total_working_hours(Database db);
     int get_average_member_working_hours(Database db) { return get_total_working_hours(db) / get_number_of_members(db); }
     void update_bonus_percentage(int new_bonus_percentage) { bonus_percentage = new_bonus_percentage; }
     void report_salary(Database db);
     int get_bonus_percentage() { return bonus_percentage; }
+    bool is_eligible_for_bonus(Database &db);
+    double calculate_variance(Database &db);
 };
 
-// Defining bodies of methods that caused dependency loops
-Employee Database::get_employee(int id) {
-    for (Employee employee : employees)
-        if (employee.get_id() == id)
-            return employee;
-    throw runtime_error("employee not found");
-}
-Employee* Database::get_pointer_to_employee(int id) {
-    for (Employee &employee : employees)
-        if (employee.get_id() == id)
-            return &employee;
-    throw runtime_error("employee (pointer) not found");
-}
-Team Database::get_team(int id) {
-    for (Team team : teams)
-        if (team.get_id() == id)
-            return team;
-    throw runtime_error("team not found");
-}
-Team* Database::get_pointer_to_team(int id) {
-    for (Team &team : teams)
-        if (team.get_id() == id)
-            return &team;
-    throw runtime_error("team not found");
-}
-int Database::get_total_working_hours_of_day(int day) {
-    int total_hours = 0;
-    for (Employee employee : employees)
-        if (employee.does_work_on_day(day))
-            total_hours += employee.get_total_working_hours();
-    return total_hours;
-}
-void Database::add_employee(Employee employee){
-    employees.push_back(employee);
-}
-void Database::add_config(SalaryConfig conf){
-    salary_configs.push_back(conf);
-}
-void Database::add_team(Team team){
-    teams.push_back(team);
-    auto ids = teams.back().get_ids();
-    for(int id : ids)
-        get_pointer_to_employee(id)->join_team(teams.back());
-}
-void Database::report_salaries(){
-    for(auto employee: employees)
-        employee.print_salary_report();
-}
 
 TimeRange vector_to_pair(const vector<string>& int_vector) {
     return make_pair(stoi(int_vector[0]), stoi(int_vector[1]));
 }
 
-void Database::handle_hour_data(Nigger data){
-    int id = stoi(data["employee_id"]);
-    int day = stoi(data["day"]);
-    auto times = split(data["working_interval"], '-');
-    auto new_day = WorkingDateTime(day, vector_to_pair(times));
-    get_pointer_to_employee(id)->add_working_date_time(new_day);
-}
-void Database::report_salary(int id){
-    try{
-        get_pointer_to_employee(id)->print_detailed_salary_report(*this);
-    }
-    catch(exception& e){
-        cout << "EMPLOYEE_NOT_FOUND" << endl;
-    }
-}
-void Database::report_team_salary(int team_id){
-    try{
-        get_pointer_to_team(team_id)->report_salary(*this);
-    }
-    catch(exception& e){
-        cout << "TEAM_NOT_FOUND" << endl;
-    }
-}
 bool is_invalid_date_range(int l, int r){
     if(r < l)
         return 1;
@@ -448,92 +377,7 @@ bool is_invalid_date_range(int l, int r){
         return 1;
     return 0;
 }
-void Database::report_total_hours_in_range(int l, int r){
-    if(is_invalid_date_range(l, r)){
-        cout << "INVALID_ARGUMENTS" << endl;
-        return;
-    }
-    int total_working_hours[MONTH_DAY_COUNT + 5];
-    memset(total_working_hours, 0, sizeof total_working_hours);
-    for(int day = l, indx = 1 ; day <= r ; day ++, indx++)
-        total_working_hours[day] = get_total_working_hours_of_day(day),
-        cout << "DAY #" << indx << ": " << total_working_hours[day] << endl;
-    cout << "---" << endl;
-    int max_working_hours = *max_element(total_working_hours + l, total_working_hours + r + 1);
-    int min_working_hours = *min_element(total_working_hours + l, total_working_hours + r + 1);
-    cout << "Day(s) with Max Working Hours: ";
-    for(int day = l ; day <= r ; day ++)
-        if(total_working_hours[day] == max_working_hours)
-            cout << day << ' ';
-    cout << endl;
-    cout << "Day(s) with Min Working Hours: ";
-    for(int day = l ; day <= r ; day ++)
-        if(total_working_hours[day] == min_working_hours)
-            cout << day << ' ';
-    cout << endl;
-}
-void Database::print_salary_config(string level_name){
-    try{
-        get_salary_config(::get_level(level_name)).print_config();
-    }
-    catch(exception &e){
-        cout << "INVALID_LEVEL" << endl;
-    }
-}
-vector <Employee> Database::get_employees() { return employees; }
-void Employee::join_team(Team team) { team_id = team.get_id(); }
-SalaryConfig Database::get_salary_config(ProficiencyLevel level){
-    for (SalaryConfig config : salary_configs)
-        if (config.get_level() == level)
-            return config;
-    throw runtime_error("salary config not found");
-}
-SalaryConfig* Database::get_pointer_to_salary_config(ProficiencyLevel level){
-    for (SalaryConfig& config : salary_configs)
-        if (config.get_level() == level)
-            return &config;
-    throw runtime_error("salary config not found");
-}
-void Team::report_salary(Database db){
-    cout << "ID: " << id << endl;
-    cout << "Head ID: " << team_head_id << endl;
-    cout << "Head Name: " << db.get_employee(team_head_id).get_name() << endl;
-    cout << "Team Total Working Hours: " << get_total_working_hours(db) << endl;
-    cout << "Average Member Working Hour: " << get_average_member_working_hours(db) << endl;
-    cout << "Bonus: " << get_bonus_percentage() << endl;
-    cout << "---" << endl;
-    for(int id : member_ids){
-        cout << "Member ID: " << id << endl;
-        cout << "Total Earning: " << db.get_employee(id).get_total_earning() << endl;
-        cout << "---" << endl;  
-    }
-}
 
-int Employee::get_bonus_amount(Database db) {
-    if (!has_team()) return 0;
-    return raw_salary * db.get_team(team_id).get_bonus_percentage() / 100;
-}
-
-void Database::recalculate_salaries() {
-    for (auto& emp : employees)
-        emp.recalculate_salary_and_earning(*this);
-}
-void Database::update_salary_config(vector<string> input){  
-    SalaryConfig* conf;  
-    try{
-        conf = get_pointer_to_salary_config(::get_level(input[0]));
-    } 
-    catch(exception &e){
-        cout << "INVALID_LEVEL" << endl;
-        return;
-    }   
-    if(input[1] != "-")conf->set_base_salary(stoi(input[1]));
-    if(input[2] != "-")conf->set_salary_per_hour(stoi(input[2]));
-    if(input[3] != "-")conf->set_salary_per_extra_hour(stoi(input[3]));
-    if(input[4] != "-")conf->set_official_working_hours(stoi(input[4]));
-    if(input[5] != "-")conf->set_tax_percentage(stoi(input[5]));
-    cout << "OK" << endl;
-}
 bool is_invalid_time_range(int l, int r){
     if(r <= l)
         return 1;
@@ -543,107 +387,17 @@ bool is_invalid_time_range(int l, int r){
         return 1;
     return 0;
 }
-void Database::add_working_hours(int id, int day, int l, int r){
-    Employee* emp;
-    try{
-        emp = get_pointer_to_employee(id);
-    }
-    catch(exception &e){
-        cout << "EMPLOYEE_NOT_FOUND" << endl;
-        return;
-    }
-    if(is_invalid_time_range(l, r) or is_invalid_day(day)){
-        cout << "INVALID_ARGUMENTS" << endl;
-        return;
-    }
-    if(emp->is_busy(WorkingDateTime(day, {l, r}))) {
-        cout << "INVALID_INTERVAL" << endl;
-        return;
-    }
-    emp->add_working_date_time(WorkingDateTime(day, {l, r}));
-    cout << "OK" << endl;
-}
+
 bool is_valid_percentage(int x){
     return x>=0 and x <= 100;
 }
-void Database::update_team_bonus(int team_id, int bonus) {
-    if(!is_valid_percentage(bonus)){
-        cout << "INVALID_ARGUMENTS" << endl;
-    }   
-    try{
-        get_pointer_to_team(team_id)->update_bonus_percentage(bonus);
-    }
-    catch(exception& e){
-        cout << "TEAM_NOT_FOUND" << endl;
-        return;
-    }
-    cout << "OK" << endl;
-}
+
 string read_next_line(ifstream& file){
     string res;
     getline(file, res);
     return res;
 }
-void Database::delete_working_hours(int id, int day){
-    Employee* emp;
-    try{
-        emp = get_pointer_to_employee(id);
-    }
-    catch(exception &e){
-        cout << "EMPLOYEE_NOT_FOUND" << endl;
-        return;
-    }
-    if(is_invalid_day(day)){
-        cout << "INVALID_ARGUMENTS" << endl;
-        return;
-    }
-    emp->delete_working_hours(day);
-    cout << "OK" << endl;
-}
 
-int Database::count_busy_employees(TimeRange time){
-    int cnt = 0;
-    for(int day = 1 ; day <= MONTH_DAY_COUNT ; day ++)
-        for(auto emp : employees)
-            cnt += emp.is_busy({day, time});
-    return cnt;
-}
-int Database::max_value_in_map(map<TimeRange, int> mp){
-    return max_element(mp.begin(), mp.end(), [](auto x, auto y){return x.second < y.second;})->second;
-}
-int Database::min_value_in_map(map<TimeRange, int> mp){
-    return min_element(mp.begin(), mp.end(), [](auto x, auto y){return x.second < y.second;})->second;
-}
-void Database::report_employee_per_hour(int l, int r){
-    if(::is_invalid_time_range(l, r)){
-        cout << "INVALID_ARGUMENTS" << endl;
-        return;
-    }
-    map<TimeRange,int> working_cnt;
-    for(int start = l ; start < r ; start ++){
-        TimeRange cur_time = {start, start+1};
-        working_cnt[cur_time] = count_busy_employees(cur_time);
-        cout << start << '-' << start+1 << ": ";
-        cout << fixed << setprecision(1) << double(working_cnt[cur_time])/MONTH_DAY_COUNT;
-        cout << endl;
-    }
-    cout << "---" << endl;
-    int max_cnt = max_value_in_map(working_cnt);
-    int min_cnt = min_value_in_map(working_cnt);
-    cout << "Period(s) with Max Working Employees: ";
-    for(int start = l ; start < r ; start ++){
-        TimeRange cur_time = {start, start+1};
-        if(working_cnt[cur_time] == max_cnt)
-            cout << start << '-' << start + 1 << ' ';
-    }
-    cout << endl << "Period(s) with Min Working Employees: ";
-    for(int start = l ; start < r ; start ++){
-        TimeRange cur_time = {start, start+1};
-        if(working_cnt[cur_time] == min_cnt)
-            cout << start << '-' << start + 1 << ' ';
-    }
-    cout << endl;
-}
 StringTable read_csv(string file_name){
     ifstream file(file_name);
     vector <string> new_line;
@@ -680,17 +434,20 @@ void get_teams_input(Database& db){
     for(int i = 1 ; i < (int)teams_raw_info.size() ; i ++)
         db.add_team(Team(make_map(teams_raw_info[0], teams_raw_info[i])));
 }
+
 void get_working_hours_input(Database& db){
     StringTable hours_raw_info = read_csv(WORKING_HOURS_FILE_NAME);
     for(int i = 1 ; i < (int)hours_raw_info.size() ; i ++)
         db.handle_hour_data(make_map(hours_raw_info[0], hours_raw_info[i]));
 }
+
 void get_file_inputs(Database &db){
     get_salary_configs(db);
     get_employees_input(db);
     get_teams_input(db);
     get_working_hours_input(db);
 }
+
 void process_stdin_input(Database &db){
     string new_line;
     while(getline(cin, new_line)){
@@ -717,7 +474,8 @@ void process_stdin_input(Database &db){
             db.delete_working_hours(stoi(words[1]), stoi(words[2]));
         if(words.front() == "update_team_bonus")
             db.update_team_bonus(stoi(words[1]), stoi(words[2]));
-
+        if(words.front() == "find_teams_for_bonus")
+            db.find_teams_for_bonus(db);
         db.recalculate_salaries();
     }
 }
@@ -727,4 +485,333 @@ int main(){
     get_file_inputs(database);
     process_stdin_input(database);
     return 0;
+}
+
+void Database::report_total_hours_in_range(int l, int r){
+    if(is_invalid_date_range(l, r)){
+        cout << "INVALID_ARGUMENTS" << endl;
+        return;
+    }
+    int total_working_hours[MONTH_DAY_COUNT + 5];
+    memset(total_working_hours, 0, sizeof total_working_hours);
+    for(int day = l, indx = 1 ; day <= r ; day ++, indx++)
+        total_working_hours[day] = get_total_working_hours_of_day(day),
+        cout << "DAY #" << indx << ": " << total_working_hours[day] << endl;
+    cout << "---" << endl;
+    int max_working_hours = *max_element(total_working_hours + l, total_working_hours + r + 1);
+    int min_working_hours = *min_element(total_working_hours + l, total_working_hours + r + 1);
+    cout << "Day(s) with Max Working Hours: ";
+    for(int day = l ; day <= r ; day ++)
+        if(total_working_hours[day] == max_working_hours)
+            cout << day << ' ';
+    cout << endl;
+    cout << "Day(s) with Min Working Hours: ";
+    for(int day = l ; day <= r ; day ++)
+        if(total_working_hours[day] == min_working_hours)
+            cout << day << ' ';
+    cout << endl;
+}
+
+void Database::print_salary_config(string level_name){
+    try{
+        get_salary_config(::get_level(level_name)).print_config();
+    }
+    catch(exception &e){
+        cout << "INVALID_LEVEL" << endl;
+    }
+}
+
+vector <Employee> Database::get_employees() { return employees; }
+
+void Employee::join_team(Team team) { team_id = team.get_id(); }
+
+SalaryConfig Database::get_salary_config(ProficiencyLevel level){
+    for (SalaryConfig config : salary_configs)
+        if (config.get_level() == level)
+            return config;
+    throw runtime_error("salary config not found");
+}
+
+SalaryConfig* Database::get_pointer_to_salary_config(ProficiencyLevel level){
+    for (SalaryConfig& config : salary_configs)
+        if (config.get_level() == level)
+            return &config;
+    throw runtime_error("salary config not found");
+}
+
+void Team::report_salary(Database db){
+    cout << "ID: " << id << endl;
+    cout << "Head ID: " << team_head_id << endl;
+    cout << "Head Name: " << db.get_employee(team_head_id).get_name() << endl;
+    cout << "Team Total Working Hours: " << get_total_working_hours(db) << endl;
+    cout << "Average Member Working Hour: " << get_average_member_working_hours(db) << endl;
+    cout << "Bonus: " << get_bonus_percentage() << endl;
+    cout << "---" << endl;
+    for(int id : member_ids){
+        cout << "Member ID: " << id << endl;
+        cout << "Total Earning: " << db.get_employee(id).get_total_earning() << endl;
+        cout << "---" << endl;  
+    }
+}
+
+int Employee::get_bonus_amount(Database db) {
+    if (!has_team()) return 0;
+    return raw_salary * db.get_team(team_id).get_bonus_percentage() / 100;
+}
+
+void Database::recalculate_salaries() {
+    for (auto& emp : employees)
+        emp.recalculate_salary_and_earning(*this);
+}
+
+void Database::update_salary_config(vector<string> input){  
+    SalaryConfig* conf;  
+    try{
+        conf = get_pointer_to_salary_config(::get_level(input[0]));
+    } 
+    catch(exception &e){
+        cout << "INVALID_LEVEL" << endl;
+        return;
+    }   
+    if(input[1] != "-")conf->set_base_salary(stoi(input[1]));
+    if(input[2] != "-")conf->set_salary_per_hour(stoi(input[2]));
+    if(input[3] != "-")conf->set_salary_per_extra_hour(stoi(input[3]));
+    if(input[4] != "-")conf->set_official_working_hours(stoi(input[4]));
+    if(input[5] != "-")conf->set_tax_percentage(stoi(input[5]));
+    cout << "OK" << endl;
+}
+
+Employee Database::get_employee(int id) {
+    for (Employee employee : employees)
+        if (employee.get_id() == id)
+            return employee;
+    throw runtime_error("employee not found");
+}
+
+Employee* Database::get_pointer_to_employee(int id) {
+    for (Employee &employee : employees)
+        if (employee.get_id() == id)
+            return &employee;
+    throw runtime_error("employee (pointer) not found");
+}
+
+Team Database::get_team(int id) {
+    for (Team team : teams)
+        if (team.get_id() == id)
+            return team;
+    throw runtime_error("team not found");
+}
+
+Team* Database::get_pointer_to_team(int id) {
+    for (Team &team : teams)
+        if (team.get_id() == id)
+            return &team;
+    throw runtime_error("team not found");
+}
+
+int Database::get_total_working_hours_of_day(int day) {
+    int total_hours = 0;
+    for (Employee employee : employees)
+        if (employee.does_work_on_day(day))
+            total_hours += employee.get_total_working_hours();
+    return total_hours;
+}
+
+void Database::add_employee(Employee employee){
+    employees.push_back(employee);
+}
+
+void Database::add_config(SalaryConfig conf){
+    salary_configs.push_back(conf);
+}
+
+void Database::add_team(Team team){
+    teams.push_back(team);
+    auto ids = teams.back().get_ids();
+    for(int id : ids)
+        get_pointer_to_employee(id)->join_team(teams.back());
+}
+
+void Database::report_salaries(){
+    for(auto employee: employees)
+        employee.print_salary_report();
+}
+
+void Database::delete_working_hours(int id, int day){
+    Employee* emp;
+    try{
+        emp = get_pointer_to_employee(id);
+    }
+    catch(exception &e){
+        cout << "EMPLOYEE_NOT_FOUND" << endl;
+        return;
+    }
+    if(is_invalid_day(day)){
+        cout << "INVALID_ARGUMENTS" << endl;
+        return;
+    }
+    emp->delete_working_hours(day);
+    cout << "OK" << endl;
+}
+
+int Database::count_busy_employees(TimeRange time){
+    int cnt = 0;
+    for(int day = 1 ; day <= MONTH_DAY_COUNT ; day ++)
+        for(auto emp : employees)
+            cnt += emp.is_busy({day, time});
+    return cnt;
+}
+
+int Database::max_value_in_map(map<TimeRange, int> mp){
+    return max_element(mp.begin(), mp.end(), [](auto x, auto y){return x.second < y.second;})->second;
+}
+
+int Database::min_value_in_map(map<TimeRange, int> mp){
+    return min_element(mp.begin(), mp.end(), [](auto x, auto y){return x.second < y.second;})->second;
+}
+
+void Database::report_employee_per_hour(int l, int r){ 
+    //probably better if this was shorter/decomposed into smaller functions
+    if(::is_invalid_time_range(l, r)){
+        cout << "INVALID_ARGUMENTS" << endl;
+        return;
+    }
+    map<TimeRange,int> working_cnt;
+    for(int start = l ; start < r ; start ++){
+        TimeRange cur_time = {start, start+1};
+        working_cnt[cur_time] = count_busy_employees(cur_time);
+        cout << start << '-' << start+1 << ": ";
+        cout << fixed << setprecision(1) << double(working_cnt[cur_time])/MONTH_DAY_COUNT;
+        cout << endl;
+    }
+    cout << "---" << endl;
+    int max_cnt = max_value_in_map(working_cnt);
+    int min_cnt = min_value_in_map(working_cnt);
+    cout << "Period(s) with Max Working Employees: ";
+    for(int start = l ; start < r ; start ++){
+        TimeRange cur_time = {start, start+1};
+        if(working_cnt[cur_time] == max_cnt)
+            cout << start << '-' << start + 1 << ' ';
+    }
+    cout << endl << "Period(s) with Min Working Employees: ";
+    for(int start = l ; start < r ; start ++){
+        TimeRange cur_time = {start, start+1};
+        if(working_cnt[cur_time] == min_cnt)
+            cout << start << '-' << start + 1 << ' ';
+    }
+    cout << endl;
+}
+
+void Database::update_team_bonus(int team_id, int bonus) {
+    if(!is_valid_percentage(bonus)){
+        cout << "INVALID_ARGUMENTS" << endl;
+    }   
+    try{
+        get_pointer_to_team(team_id)->update_bonus_percentage(bonus);
+    }
+    catch(exception& e){
+        cout << "TEAM_NOT_FOUND" << endl;
+        return;
+    }
+    cout << "OK" << endl;
+}
+
+void Database::add_working_hours(int id, int day, int l, int r){
+    Employee* emp;
+    try{
+        emp = get_pointer_to_employee(id);
+    }
+    catch(exception &e){
+        cout << "EMPLOYEE_NOT_FOUND" << endl;
+        return;
+    }
+    if(is_invalid_time_range(l, r) or is_invalid_day(day)){
+        cout << "INVALID_ARGUMENTS" << endl;
+        return;
+    }
+    if(emp->is_busy(WorkingDateTime(day, {l, r}))) {
+        cout << "INVALID_INTERVAL" << endl;
+        return;
+    }
+    emp->add_working_date_time(WorkingDateTime(day, {l, r}));
+    cout << "OK" << endl;
+}
+
+void Database::handle_hour_data(Nigger data){
+    int id = stoi(data["employee_id"]);
+    int day = stoi(data["day"]);
+    auto times = split(data["working_interval"], '-');
+    auto new_day = WorkingDateTime(day, vector_to_pair(times));
+    get_pointer_to_employee(id)->add_working_date_time(new_day);
+}
+
+void Database::report_salary(int id){
+    try{
+        get_pointer_to_employee(id)->print_detailed_salary_report(*this);
+    }
+    catch(exception& e){
+        cout << "EMPLOYEE_NOT_FOUND" << endl;
+    }
+}
+
+int Team::get_total_working_hours(Database db) {
+    int total_working_hours = 0;
+    vector <Employee> employees = db.get_employees();
+    for (Employee employee : employees)
+        total_working_hours += employee.get_total_working_hours();
+    return total_working_hours;
+}
+
+void Database::report_team_salary(int team_id){
+    try{
+        get_pointer_to_team(team_id)->report_salary(*this);
+    }
+    catch(exception& e){
+        cout << "TEAM_NOT_FOUND" << endl;
+    }
+}
+
+void Database::find_teams_for_bonus(Database &db){
+    int bonus_team_count = 0;
+    for(auto team : teams)
+        if(team.is_eligible_for_bonus(db))
+            cout << "Team ID: " << team.get_id() << endl, bonus_team_count++;
+    if(bonus_team_count == 0)
+        cout << "NO_BONUS_TEAMS" << endl;
+}
+
+int Database::get_total_working_hours_of_employee(int id){
+    return get_employee(id).calculate_total_working_hours();
+}
+
+double Database::calculate_avg(vector < int > vals){
+    double sum = 0;
+    int n = vals.size();
+    for(int x : vals)
+        sum += x;
+    return sum/n;
+}
+
+double Database::calculate_variance(vector < int > vals){
+    double avg = calculate_avg(vals);
+    int n = vals.size();
+    double ans = 0;
+    for(int x : vals)
+        ans += (x - avg) * (x - avg);
+    return ans / n;
+}   
+
+double Team::calculate_variance(Database &db){
+    vector < int > total_working_hours;
+    for(int id : member_ids)
+        total_working_hours.push_back(db.get_total_working_hours_of_employee(id));
+    return db.calculate_variance(total_working_hours);
+}
+
+bool Team::is_eligible_for_bonus(Database &db){
+    if(get_total_working_hours(db) <= bonus_min_working_hours)
+        return 0;
+    if(calculate_variance(db) >= bonus_working_hours_max_variance)
+        return 0;
+    return 1;
 }

@@ -28,7 +28,7 @@ class Employee;
 class SalaryConfig;
 class Team;
 
-typedef map<string,string> Nigger;
+typedef map<string,string> Dictionary;
 typedef vector <vector <string>> StringTable;
 
 enum ProficiencyLevel {
@@ -89,7 +89,7 @@ public:
     void add_employee(Employee employee);
     void add_config(SalaryConfig conf);
     void add_team(Team team);
-    void handle_hour_data(Nigger data);
+    void handle_hour_data(Dictionary data);
     void report_salaries();
     void report_salary(int id);
     void report_team_salary(int id);
@@ -155,7 +155,7 @@ public:
         
         return salary;
     }
-    SalaryConfig(Nigger salary_config){
+    SalaryConfig(Dictionary salary_config){
         base_salary = stoi(salary_config["base_salary"]);
         salary_per_hour = stoi(salary_config["salary_per_hour"]);
         salary_per_extra_hour = stoi(salary_config["salary_per_extra_hour"]);
@@ -204,7 +204,7 @@ private:
         return db.get_salary_config(level).calculate_raw_salary(working_date_times);
     }
 public:
-    Employee (Nigger data, Database db){
+    Employee (Dictionary data, Database db){
         id = stoi(data["id"]);
         name = data["name"];
         age = stoi(data["age"]);
@@ -335,7 +335,7 @@ private:
     vector<int> member_ids;
     double bonus_working_hours_max_variance;
 public:
-    Team (Nigger data){
+    Team (Dictionary data){
         id = stoi(data["team_id"]);
         team_head_id = stoi(data["team_head_id"]);
         bonus_min_working_hours = stoi(data["bonus_min_working_hours"]);
@@ -410,8 +410,8 @@ StringTable read_csv(string file_name){
     return lines;
 }
 
-Nigger make_map(vector < string > keys, vector < string > values){
-    Nigger res;
+Dictionary make_map(vector < string > keys, vector < string > values){
+    Dictionary res;
     assert(keys.size() == values.size());
     for(int i = 0 ; i < (int)keys.size() ; i ++)
         res[keys[i]] = values[i];
@@ -743,7 +743,7 @@ void Database::add_working_hours(int id, int day, int l, int r){
     cout << "OK" << endl;
 }
 
-void Database::handle_hour_data(Nigger data){
+void Database::handle_hour_data(Dictionary data){
     int id = stoi(data["employee_id"]);
     int day = stoi(data["day"]);
     auto times = split(data["working_interval"], '-');

@@ -15,10 +15,10 @@ using namespace std;
 
 //remove csv/
 
-const string EMPLOYEES_FILE_NAME = "csv/employees.csv";
-const string WORKING_HOURS_FILE_NAME = "csv/working_hours.csv";
-const string TEAMS_FILE_NAME = "csv/teams.csv";
-const string SALARY_CONFIGS_FILE_NAME = "csv/salary_configs.csv";
+const string EMPLOYEES_FILE_NAME = "/employees.csv";
+const string WORKING_HOURS_FILE_NAME = "/working_hours.csv";
+const string TEAMS_FILE_NAME = "/teams.csv";
+const string SALARY_CONFIGS_FILE_NAME = "/salary_configs.csv";
 const int8_t NO_TEAM = -1;
 const int MONTH_DAY_COUNT = 30;
 
@@ -418,35 +418,39 @@ Nigger make_map(vector < string > keys, vector < string > values){
     return res;
 }
 
-void get_employees_input(Database& db){
-    StringTable employees_raw_info = read_csv(EMPLOYEES_FILE_NAME);
+void get_employees_input(string file_prefix, Database& db){
+    string file_name = file_prefix + EMPLOYEES_FILE_NAME;
+    StringTable employees_raw_info = read_csv(file_name.c_str());
     for(int i = 1 ; i < (int)employees_raw_info.size() ; i ++)
         db.add_employee(Employee(make_map(employees_raw_info[0], employees_raw_info[i]), db));
 }
 
-void get_salary_configs(Database& db){
-    StringTable configs_raw_info = read_csv(SALARY_CONFIGS_FILE_NAME);
+void get_salary_configs(string file_prefix, Database& db){
+    string file_name = file_prefix + SALARY_CONFIGS_FILE_NAME;
+    StringTable configs_raw_info = read_csv(file_name.c_str());
     for(int i = 1 ; i < (int)configs_raw_info.size() ; i ++)
         db.add_config(SalaryConfig(make_map(configs_raw_info[0], configs_raw_info[i])));
 }
 
-void get_teams_input(Database& db){
-    StringTable teams_raw_info = read_csv(TEAMS_FILE_NAME);
+void get_teams_input(string file_prefix, Database& db){
+    string file_name = file_prefix + TEAMS_FILE_NAME;
+    StringTable teams_raw_info = read_csv(file_name.c_str());
     for(int i = 1 ; i < (int)teams_raw_info.size() ; i ++)
         db.add_team(Team(make_map(teams_raw_info[0], teams_raw_info[i])));
 }
 
-void get_working_hours_input(Database& db){
-    StringTable hours_raw_info = read_csv(WORKING_HOURS_FILE_NAME);
+void get_working_hours_input(string file_prefix, Database& db){
+    string file_name = file_prefix + WORKING_HOURS_FILE_NAME;
+    StringTable hours_raw_info = read_csv(file_name.c_str());
     for(int i = 1 ; i < (int)hours_raw_info.size() ; i ++)
         db.handle_hour_data(make_map(hours_raw_info[0], hours_raw_info[i]));
 }
 
-void get_file_inputs(Database &db){
-    get_salary_configs(db);
-    get_employees_input(db);
-    get_teams_input(db);
-    get_working_hours_input(db);
+void get_file_inputs(string file_prefix, Database &db){
+    get_salary_configs(file_prefix, db);
+    get_employees_input(file_prefix, db);
+    get_teams_input(file_prefix, db);
+    get_working_hours_input(file_prefix, db);
 }
 
 void process_stdin_input(Database &db){
@@ -481,9 +485,10 @@ void process_stdin_input(Database &db){
     }
 }
 
-int main(){
+int main(int argc, char* argv[]){
+    assert(argc > 1);
     Database database;
-    get_file_inputs(database);
+    get_file_inputs(argv[1], database);
     process_stdin_input(database);
     return 0;
 }

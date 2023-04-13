@@ -143,14 +143,15 @@ private:
     int official_working_hours;
     int tax_percentage;
 public:
-    int calculate_raw_salary(vector <WorkingDateTime> working_date_times) {
-        int salary = base_salary, total_working_hours = 0;
+    double calculate_raw_salary(vector <WorkingDateTime> working_date_times) {
+        double salary = base_salary;
+        int total_working_hours = 0;
         for (WorkingDateTime working_date_time : working_date_times) {
             total_working_hours += working_date_time.get_length();
-            salary += working_date_time.get_length() * salary_per_hour;
+            salary += (double)working_date_time.get_length() * (double)salary_per_hour;
         }
         if (total_working_hours > official_working_hours)
-            salary += (total_working_hours - official_working_hours) * salary_per_extra_hour;
+            salary += (double)((double)total_working_hours - (double)official_working_hours) * (double)salary_per_extra_hour;
         
         return salary;
     }
@@ -162,8 +163,8 @@ public:
         tax_percentage = stoi(salary_config["tax_percentage"]);
         level = ::get_level(salary_config["level"]);
     }
-    int get_tax_amount(int salary) {
-        return salary * tax_percentage / 100;
+    double get_tax_amount(double salary) {
+        return salary * (double)tax_percentage / 100.0;
     }
     ProficiencyLevel get_level() { return level; }
     int get_base_salary() { return base_salary; }
@@ -196,10 +197,10 @@ private:
 
     int team_id;
 
-    int raw_salary;
-    int total_earning;
+    double raw_salary;
+    double total_earning;
     
-    int calculate_raw_salary(Database db) {
+    double calculate_raw_salary(Database db) {
         return db.get_salary_config(level).calculate_raw_salary(working_date_times);
     }
 public:
@@ -266,15 +267,15 @@ public:
                 return "team lead";
         }
     }
-    int get_raw_salary() { return raw_salary; }
-    int get_total_earning() { return total_earning; }
+    double get_raw_salary() { return raw_salary; }
+    double get_total_earning() { return total_earning; }
     int get_id() { return id; }
     int get_age() { return age; }
     int get_team_id() { return team_id; }
-    int get_tax_amount(Database db) {
+    double get_tax_amount(Database db) {
         return db.get_salary_config(level).get_tax_amount(raw_salary+get_bonus_amount(db));
     }
-    int get_bonus_amount(Database db);
+    double get_bonus_amount(Database db);
     int count_absent_days(){
         bool is_present[MONTH_DAY_COUNT+5];
         memset(is_present, 0, sizeof is_present);
@@ -302,10 +303,10 @@ public:
         cout << "Team ID: ", print_team_id();
         cout << "Total Working Hours: " << calculate_total_working_hours() << endl; 
         cout << "Absent Days: " << count_absent_days() << endl;
-        cout << "Salary: " << get_raw_salary() << endl; //gerd kon agha
-        cout << "Bonus: " << get_bonus_amount(db) << endl; 
-        cout << "Tax: " << get_tax_amount(db) << endl;
-        cout << "Total Earning: " << total_earning << endl; 
+        cout << "Salary: " << fixed << setprecision(0) << get_raw_salary() << endl; //gerd kon agha
+        cout << "Bonus: " << fixed << setprecision(0) << get_bonus_amount(db) << endl; 
+        cout << "Tax: " << fixed << setprecision(0) << get_tax_amount(db) << endl;
+        cout << "Total Earning: " << fixed << setprecision(0) << total_earning << endl; 
     }
     string get_name() { return name; }
     ProficiencyLevel get_level() { return level; }
@@ -355,7 +356,7 @@ public:
     vector<int> get_ids(){return member_ids;}
     int get_number_of_members(Database db) { return get_employees(db).size(); }
     int get_total_working_hours(Database db);
-    int get_average_member_working_hours(Database db) { return get_total_working_hours(db) / get_number_of_members(db); }
+    double get_average_member_working_hours(Database db) { return (double)get_total_working_hours(db) / (double)get_number_of_members(db); }
     void update_bonus_percentage(int new_bonus_percentage) { bonus_percentage = new_bonus_percentage; }
     void report_salary(Database db);
     int get_bonus_percentage() { return bonus_percentage; }
@@ -544,17 +545,17 @@ void Team::report_salary(Database db){
     cout << "Head ID: " << team_head_id << endl;
     cout << "Head Name: " << db.get_employee(team_head_id).get_name() << endl;
     cout << "Team Total Working Hours: " << get_total_working_hours(db) << endl;
-    cout << "Average Member Working Hour: " << get_average_member_working_hours(db) << endl;
+    cout << "Average Member Working Hour: " << fixed << setprecision(1) << get_average_member_working_hours(db) << endl;
     cout << "Bonus: " << get_bonus_percentage() << endl;
     cout << "---" << endl;
     for(int id : member_ids){
         cout << "Member ID: " << id << endl;
-        cout << "Total Earning: " << db.get_employee(id).get_total_earning() << endl;
+        cout << "Total Earning: " << fixed << setprecision(0) << db.get_employee(id).get_total_earning() << endl;
         cout << "---" << endl;  
     }
 }
 
-int Employee::get_bonus_amount(Database db) {
+double Employee::get_bonus_amount(Database db) {
     if (!has_team()) return 0;
     return raw_salary * db.get_team(team_id).get_bonus_percentage() / 100;
 }

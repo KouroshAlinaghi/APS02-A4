@@ -407,6 +407,7 @@ StringTable read_csv(string file_name){
         new_line = split(read_next_line(file), ',');
         lines.push_back(new_line);
     }
+    sort(lines.begin() + 1, lines.end());
     return lines;
 }
 

@@ -661,13 +661,13 @@ int Database::count_busy_employees(TimeRange time){
             cnt += emp.is_busy({day, time});
     return cnt;
 }
-
+//typedef?
 int Database::max_value_in_map(map<TimeRange, int> mp){
-    return max_element(mp.begin(), mp.end(), [](auto x, auto y){return x.second < y.second;})->second;
+    return max_element(mp.begin(), mp.end(), [](pair <TimeRange, int> x, pair <TimeRange, int> y){return x.second < y.second;})->second;
 }
 
 int Database::min_value_in_map(map<TimeRange, int> mp){
-    return min_element(mp.begin(), mp.end(), [](auto x, auto y){return x.second < y.second;})->second;
+    return min_element(mp.begin(), mp.end(), [](pair <TimeRange, int> x, pair <TimeRange, int> y){return x.second < y.second;})->second;
 }
 
 void Database::report_employee_per_hour(int l, int r){ 

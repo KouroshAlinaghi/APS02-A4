@@ -14,6 +14,6 @@ do
   ((i++)) 2> /dev/null
   ./gen
   ./mine assets < input.txt > mine.txt
-  ./other < input.txt > other.txt
+  ./other assets < input.txt > other.txt
 done
 code --diff mine.txt other.txt

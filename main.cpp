@@ -783,7 +783,7 @@ void Team::report_salary(Database db){
 
 int Team::get_total_working_hours(Database db) {
     int total_working_hours = 0;
-    vector <Employee> employees = db.get_employees();
+    vector <Employee> employees = get_employees(db);
     for (Employee employee : employees)
         total_working_hours += employee.get_total_working_hours();
     return total_working_hours;

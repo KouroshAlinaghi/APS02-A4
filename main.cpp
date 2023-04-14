@@ -49,11 +49,11 @@ vector <string> split(string str, char delimeter){
     vector <string> res;
     string cur = "";
     for(char c : str)
-        if(c == delimeter or c == '\r')
+        if(cur.size() and (c == delimeter or c == '\r'))
             res.push_back(cur), cur = "";
         else
             cur += c;
-    res.push_back(cur);
+    if(cur.size())res.push_back(cur);
     return res;
 }
 
@@ -291,21 +291,40 @@ StringTable read_csv(string file_name){
         new_line = split(read_next_line(file), ',');
         lines.push_back(new_line);
     }
-    sort(lines.begin() + 1, lines.end());
     return lines;
+}
+
+void ascii(string x){
+    for(char c : x)
+        cout << int(c) << ' ';
+    cout << endl;   
 }
 
 Dictionary make_map(vector < string > keys, vector < string > values){
     Dictionary res;
+    if(keys.size() != values.size()){
+        cout << values.size() << endl;
+        for(auto x : keys)
+            cout << x << ' ' ;
+        cout << endl;
+        for(auto x : values)
+            ascii(x);
+        cout << endl;
+    }
     assert(keys.size() == values.size());
     for(int i = 0 ; i < (int)keys.size() ; i ++)
         res[keys[i]] = values[i];
     return res;
 }
 
+bool employee_cmp(vector<string>a, vector<string>b){
+    return stoi(a.front()) < stoi(b.front());
+}
+
 void get_employees_input(string file_prefix, Database& db){
     string file_name = file_prefix + EMPLOYEES_FILE_NAME;
     StringTable employees_raw_info = read_csv(file_name.c_str());
+    sort(employees_raw_info.begin() + 1, employees_raw_info.end(), employee_cmp);
     for(int i = 1 ; i < (int)employees_raw_info.size() ; i ++)
         db.add_employee(Employee(make_map(employees_raw_info[0], employees_raw_info[i]), db));
 }

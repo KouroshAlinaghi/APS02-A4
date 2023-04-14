@@ -1,2 +1,12 @@
 *.out
 .vscode/
+gen/mine
+gen/input.txt
+gen/other
+gen/other.txt
+gen/mine.txt
+gen/assets/employees.csv
+gen/assets/salary_configs.csv
+gen/assets/teams.csv
+gen/assets/working_hours.csv
+

@@ -1,3 +1,4 @@
+#include <math.h>  
 #include <limits>
 #include <iomanip>
 #include <algorithm>
@@ -510,7 +511,7 @@ int Database::count_busy_employees(TimeRange time){
 double rounded(double x, int precision){
     for(int i = 0 ; i < precision ; i ++)
         x *= 10;
-    x = int(x);
+    x = round(x);
     for(int i = 0 ; i < precision ; i ++)
         x /= 10;
     return x;

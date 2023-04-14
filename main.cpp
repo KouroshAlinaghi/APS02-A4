@@ -57,6 +57,15 @@ vector <string> split(string str, char delimeter){
     return res;
 }
 
+double rounded(double x, int precision){
+    for(int i = 0 ; i < precision ; i ++)
+        x *= 10;
+    x = round(x);
+    for(int i = 0 ; i < precision ; i ++)
+        x /= 10;
+    return x;
+}
+
 class WorkingDateTime {
 private:
     int day;
@@ -161,7 +170,7 @@ private:
     double total_earning;
 
     double calculate_raw_salary(Database db) {
-        return db.get_salary_config(level).calculate_raw_salary(working_date_times);
+        return rounded(db.get_salary_config(level).calculate_raw_salary(working_date_times), 0);
     }
 
 public:
@@ -172,14 +181,14 @@ public:
         level = ::get_level(data["level"]);
         team_id = NO_TEAM;
         raw_salary = calculate_raw_salary(db);
-        total_earning = raw_salary - get_tax_amount(db) + get_bonus_amount(db);
+        total_earning = rounded(raw_salary, 0) - rounded(get_tax_amount(db), 0) + rounded(get_bonus_amount(db), 0);
     }
     string get_name() { return name; }
     ProficiencyLevel get_level() { return level; }
     bool has_team() { return team_id != NO_TEAM; }
     void add_working_date_time(WorkingDateTime working_date_time) { working_date_times.push_back(working_date_time); }
     void delete_working_hours(int day);
-    void recalculate_salary_and_earning(Database db) { total_earning = raw_salary - get_tax_amount(db) + get_bonus_amount(db); }
+    void recalculate_salary_and_earning(Database db) { total_earning = rounded(raw_salary - get_tax_amount(db) + get_bonus_amount(db), 0); }
     void join_team(Team team);
     int get_total_working_hours();
     bool does_work_on_day(int day);
@@ -190,7 +199,7 @@ public:
     int get_id() { return id; }
     int get_age() { return age; }
     int get_team_id() { return team_id; }
-    double get_tax_amount(Database db) { return db.get_salary_config(level).get_tax_amount(raw_salary + get_bonus_amount(db)); }
+    double get_tax_amount(Database db) { return rounded(db.get_salary_config(level).get_tax_amount(rounded(raw_salary, 0) + rounded(get_bonus_amount(db), 0)), 0); }
     double get_bonus_amount(Database db);
     int count_absent_days();
     bool is_busy(WorkingDateTime cur_time);
@@ -508,15 +517,6 @@ int Database::count_busy_employees(TimeRange time){
     return cnt;
 }
 
-double rounded(double x, int precision){
-    for(int i = 0 ; i < precision ; i ++)
-        x *= 10;
-    x = round(x);
-    for(int i = 0 ; i < precision ; i ++)
-        x /= 10;
-    return x;
-}
-
 double Database::max_value_in_map(map<TimeRange,double> mp){
     double mx = std::numeric_limits<double>::min();
     for(auto key_val : mp)
@@ -742,7 +742,7 @@ void Employee::join_team(Team team) { team_id = team.get_id(); }
 
 double Employee::get_bonus_amount(Database db) {
     if (!has_team()) return 0;
-    return raw_salary * db.get_team(team_id).get_bonus_percentage() / 100;
+    return rounded(raw_salary * db.get_team(team_id).get_bonus_percentage() / 100, 0);
 }
 
 

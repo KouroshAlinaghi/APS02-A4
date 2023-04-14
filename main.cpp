@@ -219,6 +219,7 @@ public:
         bonus_min_working_hours = stoi(data["bonus_min_working_hours"]);
         bonus_working_hours_max_variance = stod(data["bonus_working_hours_max_variance"]);
         member_ids = string_to_int_vector(split(data["member_ids"], '$'));
+        sort(member_ids.begin(), member_ids.end());
         bonus_percentage = 0;
     }
     int get_id() { return id; }

@@ -139,7 +139,7 @@ public:
         tax_percentage = stoi(salary_config["tax_percentage"]);
         level = ::get_level(salary_config["level"]);
     }
-    double calculate_raw_salary(int total_working_hours);
+    double calculate_raw_salary(vector <WorkingDateTime> working_date_times);
     double get_tax_amount(double salary) { return salary * (double)tax_percentage / 100.0; }
     ProficiencyLevel get_level() { return level; }
     int get_base_salary() { return base_salary; }
@@ -170,7 +170,7 @@ private:
     double total_earning;
 
     double calculate_raw_salary(Database db) {
-        return db.get_salary_config(level).calculate_raw_salary(get_total_working_hours());
+        return db.get_salary_config(level).calculate_raw_salary(working_date_times);
     }
 
 public:
@@ -662,10 +662,13 @@ void SalaryConfig::print_config(){
     cout << "Tax: " << tax_percentage << '%' << endl;
 }
 
-double SalaryConfig::calculate_raw_salary(int total_working_hours) {
-    double salary = base_salary;
-    salary += salary_per_hour * total_working_hours;
-    return salary + max(0, total_working_hours - official_working_hours) * (salary_per_extra_hour - salary_per_hour);
+double SalaryConfig::calculate_raw_salary(vector <WorkingDateTime> working_date_times) {
+    double total_time = 0;
+    for(auto wdt : working_date_times)
+        total_time += wdt.get_length();
+    double normal_earning = min(total_time, double(official_working_hours)) * salary_per_hour;
+    double extra_earning = max(0.0, total_time - official_working_hours) * salary_per_extra_hour;
+    return normal_earning + extra_earning + base_salary;
 }
 
 void Employee::delete_working_hours(int day) {

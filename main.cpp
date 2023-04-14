@@ -81,10 +81,11 @@ private:
   vector<Employee> employees;
   vector<SalaryConfig> salary_configs;
   vector<Team> teams;
-
+  Employee *get_pointer_to_employee(int id);
+  Team *get_pointer_to_team(int id);
+  SalaryConfig *get_pointer_to_salary_config(ProficiencyLevel level);
 public:
   SalaryConfig get_salary_config(ProficiencyLevel level);
-  SalaryConfig *get_pointer_to_salary_config(ProficiencyLevel level);
   void add_employee(Employee employee);
   void add_config(SalaryConfig conf);
   void add_team(Team team);
@@ -93,9 +94,7 @@ public:
   void report_salary(int id);
   void report_team_salary(int id);
   Employee get_employee(int id);
-  Employee *get_pointer_to_employee(int id);
   Team get_team(int id);
-  Team *get_pointer_to_team(int id);
   vector<Employee> get_employees();
   int get_total_working_hours_of_day(int day);
   void report_total_hours_in_range(int l, int r);

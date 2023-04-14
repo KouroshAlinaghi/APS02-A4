@@ -210,6 +210,7 @@ public:
     void print_team_id();
     void print_salary_report();
     void print_detailed_salary_report(Database &db);
+    int get_total_working_hours_on_day(int day);
 };
 
 vector<int> string_to_int_vector(const vector<string>& str_vector) {
@@ -422,7 +423,7 @@ void Database::report_total_hours_in_range(int l, int r){
     memset(total_working_hours, 0, sizeof total_working_hours);
     for(int day = l ; day <= r ; day ++)
         total_working_hours[day] = get_total_working_hours_of_day(day),
-        cout << "DAY #" << day << ": " << total_working_hours[day] << endl;
+        cout << "Day #" << day << ": " << total_working_hours[day] << endl;
     cout << "---" << endl;
     int max_working_hours = *max_element(total_working_hours + l, total_working_hours + r + 1);
     int min_working_hours = *min_element(total_working_hours + l, total_working_hours + r + 1);
@@ -505,7 +506,7 @@ int Database::get_total_working_hours_of_day(int day) {
     int total_hours = 0;
     for (Employee employee : employees)
         if (employee.does_work_on_day(day))
-            total_hours += employee.get_total_working_hours();
+            total_hours += employee.get_total_working_hours_on_day(day);
     return total_hours;
 }
 
@@ -810,4 +811,12 @@ vector <Employee> Team::get_employees(Database db) {
         if (employee.get_team_id() == id)
             members.push_back(employee);
     return members;
+}
+
+int Employee::get_total_working_hours_on_day(int day){
+    int total = 0;
+    for(auto working_date : working_date_times)
+        if(working_date.get_day() == day)  
+            total += working_date.get_length();
+    return total;
 }

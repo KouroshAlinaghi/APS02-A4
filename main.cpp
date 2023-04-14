@@ -13,14 +13,13 @@
 
 using namespace std;
 
-//remove csv/
-
 const string EMPLOYEES_FILE_NAME = "/employees.csv";
 const string WORKING_HOURS_FILE_NAME = "/working_hours.csv";
 const string TEAMS_FILE_NAME = "/teams.csv";
 const string SALARY_CONFIGS_FILE_NAME = "/salary_configs.csv";
 const int8_t NO_TEAM = -1;
 const int MONTH_DAY_COUNT = 30;
+const int MAX_HOUR_VALUE = 24;
 
 class WorkingDateTime;
 class Database;
@@ -30,15 +29,19 @@ class Team;
 
 typedef map<string,string> Dictionary;
 typedef vector <vector <string>> StringTable;
-
-enum ProficiencyLevel {
-    JUNIOR,
-    EXPERT,
-    SENIOR,
-    TEAM_LEAD
-};
+typedef pair<int, int> TimeRange;
 
 #define debug(x) cout << x, exit(0)
+
+enum ProficiencyLevel { JUNIOR, EXPERT, SENIOR, TEAM_LEAD };
+map<string, ProficiencyLevel> LEVELS{{"team_lead", TEAM_LEAD}, {"senior", SENIOR}, {"expert", EXPERT}, {"junior", JUNIOR}};
+
+ProficiencyLevel get_level(string level) {
+    if (!LEVELS.count(level))
+        throw runtime_error("level not found");
+
+    return LEVELS[level];
+}
 
 vector <string> split(string str, char delimeter){
     vector <string> res;
@@ -52,8 +55,6 @@ vector <string> split(string str, char delimeter){
     return res;
 }
 
-typedef pair<int, int> TimeRange;
-
 class WorkingDateTime {
 private:
     int day;
@@ -65,17 +66,9 @@ public:
     }
     int get_day() { return day; }
     int get_length() { return time_range.second - time_range.first; }
-    int get_start(){return time_range.first;}
-    int get_end(){return time_range.second;}
-    bool overlaps(WorkingDateTime time){
-        if(time.get_day() != day)
-            return false;
-        if(time_range.first >= time.get_end()) 
-            return false;
-        if(time_range.second <= time.get_start())
-            return false;
-        return true;
-    }
+    int get_start(){ return time_range.first; }
+    int get_end(){ return time_range.second; }
+    bool overlaps(WorkingDateTime time);
 };
 
 class Database {
@@ -116,24 +109,8 @@ public:
     double calculate_variance(vector < int > vals);
 };
 
-ProficiencyLevel get_level(string level){   
-    if(level == "team_lead"){
-        return TEAM_LEAD;
-    }
-    if(level == "senior"){
-        return SENIOR;
-    }
-    if(level == "expert"){
-        return EXPERT;
-    }
-    if(level == "junior"){
-        return JUNIOR;
-    }
-    throw runtime_error("level not found");
-}  
-bool is_invalid_day(int day){
-    return day < 1 or day > MONTH_DAY_COUNT;
-}
+bool is_invalid_day(int day) { return day < 1 or day > MONTH_DAY_COUNT; }
+
 class SalaryConfig {
 private:
     ProficiencyLevel level;
@@ -143,18 +120,6 @@ private:
     int official_working_hours;
     int tax_percentage;
 public:
-    double calculate_raw_salary(vector <WorkingDateTime> working_date_times) {
-        double salary = base_salary;
-        int total_working_hours = 0;
-        for (WorkingDateTime working_date_time : working_date_times) {
-            total_working_hours += working_date_time.get_length();
-            salary += (double)working_date_time.get_length() * (double)salary_per_hour;
-        }
-        if (total_working_hours > official_working_hours)
-            salary += (double)((double)total_working_hours - (double)official_working_hours) * (double)salary_per_extra_hour;
-        
-        return salary;
-    }
     SalaryConfig(Dictionary salary_config){
         base_salary = stoi(salary_config["base_salary"]);
         salary_per_hour = stoi(salary_config["salary_per_hour"]);
@@ -163,9 +128,8 @@ public:
         tax_percentage = stoi(salary_config["tax_percentage"]);
         level = ::get_level(salary_config["level"]);
     }
-    double get_tax_amount(double salary) {
-        return salary * (double)tax_percentage / 100.0;
-    }
+    double calculate_raw_salary(vector <WorkingDateTime> working_date_times);
+    double get_tax_amount(double salary) { return salary * (double)tax_percentage / 100.0; }
     ProficiencyLevel get_level() { return level; }
     int get_base_salary() { return base_salary; }
     int get_salary_per_hour() { return salary_per_hour; }
@@ -177,13 +141,7 @@ public:
     void set_salary_per_extra_hour(int x) { salary_per_extra_hour = x; }
     void set_official_working_hours(int x) { official_working_hours = x; }
     void set_tax_percentage(int x) { tax_percentage = x; }
-    void print_config(){
-        cout << "Base Salary: " << base_salary << endl;
-        cout << "Salary Per Hour: " << salary_per_hour << endl;
-        cout << "Salary Per Extra Hour: " << salary_per_extra_hour << endl;
-        cout << "Official Working Hours: " << official_working_hours << endl;
-        cout << "Tax: " << tax_percentage << '%' << endl;
-    }
+    void print_config();
 };
 
 class Employee {
@@ -193,18 +151,19 @@ private:
     int age;
     ProficiencyLevel level;
 
-    vector <WorkingDateTime> working_date_times;
+    vector<WorkingDateTime> working_date_times;
 
     int team_id;
 
     double raw_salary;
     double total_earning;
-    
+
     double calculate_raw_salary(Database db) {
         return db.get_salary_config(level).calculate_raw_salary(working_date_times);
     }
+
 public:
-    Employee (Dictionary data, Database db){
+    Employee(Dictionary data, Database db) {
         id = stoi(data["id"]);
         name = data["name"];
         age = stoi(data["age"]);
@@ -213,116 +172,35 @@ public:
         raw_salary = calculate_raw_salary(db);
         total_earning = raw_salary - get_tax_amount(db) + get_bonus_amount(db);
     }
+    string get_name() { return name; }
+    ProficiencyLevel get_level() { return level; }
     bool has_team() { return team_id != NO_TEAM; }
-    void delete_working_hours(int day) {
-        vector <WorkingDateTime> result;
-        for(auto time : working_date_times){
-            if(time.get_day() != day)
-                result.push_back(time);
-        }
-        working_date_times = result;
-    }
-    void add_working_date_time(WorkingDateTime working_date_time) {
-        working_date_times.push_back(working_date_time);
-    }
+    void add_working_date_time(WorkingDateTime working_date_time) { working_date_times.push_back(working_date_time); }
+    void delete_working_hours(int day);
+    void recalculate_salary_and_earning(Database db) { total_earning = raw_salary - get_tax_amount(db) + get_bonus_amount(db); }
     void join_team(Team team);
-    void recalculate_salary_and_earning(Database db) {
-        total_earning = raw_salary - get_tax_amount(db) + get_bonus_amount(db);
-    }
-    int get_total_working_hours() {
-        int total_working_hours = 0;
-        for (WorkingDateTime working_date_time : working_date_times)
-            total_working_hours += working_date_time.get_length();
-        return total_working_hours;
-    }
-    bool does_work_on_day(int day) {
-        for (WorkingDateTime working_date_time : working_date_times)
-            if (working_date_time.get_day() == day)
-                return true;
-        
-        return false;
-    }
-    int calculate_total_working_hours(){
-        int total = 0;
-        for(auto time : working_date_times)
-            total += time.get_length();
-        return total;
-    }   
-    void print_salary_report(){
-        cout << "ID: " << id << endl;
-        cout << "Name: " << name << endl; 
-        cout << "Total Working Hours: " << calculate_total_working_hours() << endl;   
-        cout << "Total Earning: " << total_earning << endl; 
-        cout << "---" << endl;
-    }
-    string get_level_humanized() {
-        switch (level) {
-            case JUNIOR:
-                return "junior";
-            case EXPERT:
-                return "expert";
-            case SENIOR:
-                return "senior";
-            default:
-                return "team lead";
-        }
-    }
+    int get_total_working_hours();
+    bool does_work_on_day(int day);
+    int calculate_total_working_hours();
+    string get_level_humanized();
     double get_raw_salary() { return raw_salary; }
     double get_total_earning() { return total_earning; }
     int get_id() { return id; }
     int get_age() { return age; }
     int get_team_id() { return team_id; }
-    double get_tax_amount(Database db) {
-        return db.get_salary_config(level).get_tax_amount(raw_salary+get_bonus_amount(db));
-    }
+    double get_tax_amount(Database db) { return db.get_salary_config(level).get_tax_amount(raw_salary + get_bonus_amount(db)); }
     double get_bonus_amount(Database db);
-    int count_absent_days(){
-        bool is_present[MONTH_DAY_COUNT+5];
-        memset(is_present, 0, sizeof is_present);
-        for(WorkingDateTime working_date_time : working_date_times){
-            if(working_date_time.get_length())
-                is_present[working_date_time.get_day()] = 1;
-        }
-        int absent_days_count = 0;
-        for(int i = 1 ; i <= MONTH_DAY_COUNT ; i ++)
-            absent_days_count += !is_present[i];
-        return absent_days_count;
-    }
-    void print_team_id(){
-        if(team_id == NO_TEAM)
-            cout << "N/A";
-        else
-            cout << team_id;
-        cout << endl;
-    }
-    void print_detailed_salary_report(Database &db){
-        cout << "ID: " << get_id() << endl;
-        cout << "Name: " << get_name() << endl;
-        cout << "Age: " << get_age() << endl;
-        cout << "Level: " <<  get_level_humanized() << endl;
-        cout << "Team ID: ", print_team_id();
-        cout << "Total Working Hours: " << calculate_total_working_hours() << endl; 
-        cout << "Absent Days: " << count_absent_days() << endl;
-        cout << "Salary: " << fixed << setprecision(0) << get_raw_salary() << endl; //gerd kon agha
-        cout << "Bonus: " << fixed << setprecision(0) << get_bonus_amount(db) << endl; 
-        cout << "Tax: " << fixed << setprecision(0) << get_tax_amount(db) << endl;
-        cout << "Total Earning: " << fixed << setprecision(0) << total_earning << endl; 
-    }
-    string get_name() { return name; }
-    ProficiencyLevel get_level() { return level; }
-    bool is_busy(WorkingDateTime cur_time){
-        for(auto time : working_date_times)
-            if(time.overlaps(cur_time))
-                return 1;
-        return 0;
-    }
+    int count_absent_days();
+    bool is_busy(WorkingDateTime cur_time);
+    void print_team_id();
+    void print_salary_report();
+    void print_detailed_salary_report(Database &db);
 };
 
 vector<int> string_to_int_vector(const vector<string>& str_vector) {
     vector<int> int_vector;
-    for (const auto& str : str_vector) {
+    for (const auto& str : str_vector)
         int_vector.push_back(stoi(str));
-    }
     return int_vector;
 }
 
@@ -346,13 +224,7 @@ public:
     int get_id() { return id; }
     int get_team_head_id() { return team_head_id; }
     string get_head_member_name(Database db) { return db.get_employee(team_head_id).get_name(); }
-    vector <Employee> get_employees(Database db) {
-        vector <Employee> members, employees = db.get_employees();
-        for (Employee employee : employees)
-            if (employee.get_team_id() == id)
-                members.push_back(employee);
-        return members;
-    }
+    vector <Employee> get_employees(Database db);
     vector<int> get_ids(){return member_ids;}
     int get_number_of_members(Database db) { return get_employees(db).size(); }
     int get_total_working_hours(Database db);
@@ -363,7 +235,6 @@ public:
     bool is_eligible_for_bonus(Database &db);
     double calculate_variance(Database &db);
 };
-
 
 TimeRange vector_to_pair(const vector<string>& int_vector) {
     return make_pair(stoi(int_vector[0]), stoi(int_vector[1]));
@@ -384,14 +255,12 @@ bool is_invalid_time_range(int l, int r){
         return 1;
     if(l < 0)
         return 1;
-    if(r > 24)
+    if(r > MAX_HOUR_VALUE)
         return 1;
     return 0;
 }
 
-bool is_valid_percentage(int x){
-    return x>=0 and x <= 100;
-}
+bool is_valid_percentage(int x) { return x>=0 and x <= 100; }
 
 string read_next_line(ifstream& file){
     string res;
@@ -494,6 +363,16 @@ int main(int argc, char* argv[]){
     return 0;
 }
 
+bool WorkingDateTime::overlaps(WorkingDateTime time){
+    if(time.get_day() != day)
+        return false;
+    if(time_range.first >= time.get_end()) 
+        return false;
+    if(time_range.second <= time.get_start())
+        return false;
+    return true;
+}
+
 void Database::report_total_hours_in_range(int l, int r){
     if(is_invalid_date_range(l, r)){
         cout << "INVALID_ARGUMENTS" << endl;
@@ -530,8 +409,6 @@ void Database::print_salary_config(string level_name){
 
 vector <Employee> Database::get_employees() { return employees; }
 
-void Employee::join_team(Team team) { team_id = team.get_id(); }
-
 SalaryConfig Database::get_salary_config(ProficiencyLevel level){
     for (SalaryConfig config : salary_configs)
         if (config.get_level() == level)
@@ -544,26 +421,6 @@ SalaryConfig* Database::get_pointer_to_salary_config(ProficiencyLevel level){
         if (config.get_level() == level)
             return &config;
     throw runtime_error("salary config not found");
-}
-
-void Team::report_salary(Database db){
-    cout << "ID: " << id << endl;
-    cout << "Head ID: " << team_head_id << endl;
-    cout << "Head Name: " << db.get_employee(team_head_id).get_name() << endl;
-    cout << "Team Total Working Hours: " << get_total_working_hours(db) << endl;
-    cout << "Average Member Working Hour: " << fixed << setprecision(1) << get_average_member_working_hours(db) << endl;
-    cout << "Bonus: " << get_bonus_percentage() << endl;
-    cout << "---" << endl;
-    for(int id : member_ids){
-        cout << "Member ID: " << id << endl;
-        cout << "Total Earning: " << fixed << setprecision(0) << db.get_employee(id).get_total_earning() << endl;
-        cout << "---" << endl;  
-    }
-}
-
-double Employee::get_bonus_amount(Database db) {
-    if (!has_team()) return 0;
-    return raw_salary * db.get_team(team_id).get_bonus_percentage() / 100;
 }
 
 void Database::recalculate_salaries() {
@@ -624,13 +481,8 @@ int Database::get_total_working_hours_of_day(int day) {
     return total_hours;
 }
 
-void Database::add_employee(Employee employee){
-    employees.push_back(employee);
-}
-
-void Database::add_config(SalaryConfig conf){
-    salary_configs.push_back(conf);
-}
+void Database::add_employee(Employee employee){ employees.push_back(employee); }
+void Database::add_config(SalaryConfig conf){ salary_configs.push_back(conf); }
 
 void Database::add_team(Team team){
     teams.push_back(team);
@@ -668,7 +520,7 @@ int Database::count_busy_employees(TimeRange time){
             cnt += emp.is_busy({day, time});
     return cnt;
 }
-//typedef?
+
 int Database::max_value_in_map(map<TimeRange, int> mp){
     return max_element(mp.begin(), mp.end(), [](pair <TimeRange, int> x, pair <TimeRange, int> y){return x.second < y.second;})->second;
 }
@@ -761,14 +613,6 @@ void Database::report_salary(int id){
     }
 }
 
-int Team::get_total_working_hours(Database db) {
-    int total_working_hours = 0;
-    vector <Employee> employees = db.get_employees();
-    for (Employee employee : employees)
-        total_working_hours += employee.get_total_working_hours();
-    return total_working_hours;
-}
-
 void Database::report_team_salary(int team_id){
     try{
         get_pointer_to_team(team_id)->report_salary(*this);
@@ -787,9 +631,7 @@ void Database::find_teams_for_bonus(Database &db){
         cout << "NO_BONUS_TEAMS" << endl;
 }
 
-int Database::get_total_working_hours_of_employee(int id){
-    return get_employee(id).calculate_total_working_hours();
-}
+int Database::get_total_working_hours_of_employee(int id){ return get_employee(id).calculate_total_working_hours(); }
 
 double Database::calculate_avg(vector < int > vals){
     double sum = 0;
@@ -806,7 +648,146 @@ double Database::calculate_variance(vector < int > vals){
     for(int x : vals)
         ans += (x - avg) * (x - avg);
     return ans / n;
-}   
+}
+
+void SalaryConfig::print_config(){
+    cout << "Base Salary: " << base_salary << endl;
+    cout << "Salary Per Hour: " << salary_per_hour << endl;
+    cout << "Salary Per Extra Hour: " << salary_per_extra_hour << endl;
+    cout << "Official Working Hours: " << official_working_hours << endl;
+    cout << "Tax: " << tax_percentage << '%' << endl;
+}
+
+double SalaryConfig::calculate_raw_salary(vector <WorkingDateTime> working_date_times) {
+    double salary = base_salary;
+    int total_working_hours = 0;
+    for (WorkingDateTime working_date_time : working_date_times) {
+        total_working_hours += working_date_time.get_length();
+        salary += (double)working_date_time.get_length() * (double)salary_per_hour;
+    }
+    if (total_working_hours > official_working_hours)
+        salary += (double)((double)total_working_hours - (double)official_working_hours) * (double)salary_per_extra_hour;
+            
+    return salary;
+}
+
+void Employee::delete_working_hours(int day) {
+    vector<WorkingDateTime> result;
+    for (auto time : working_date_times)
+        if (time.get_day() != day)
+            result.push_back(time);
+    working_date_times = result;
+}
+
+int Employee::get_total_working_hours() {
+    int total_working_hours = 0;
+    for (WorkingDateTime working_date_time : working_date_times)
+        total_working_hours += working_date_time.get_length();
+    return total_working_hours;
+}
+
+bool Employee::does_work_on_day(int day) {
+    for (WorkingDateTime working_date_time : working_date_times)
+        if (working_date_time.get_day() == day)
+            return true;
+
+    return false;
+}
+
+int Employee::calculate_total_working_hours() {
+    int total = 0;
+    for (auto time : working_date_times)
+        total += time.get_length();
+    return total;
+}
+
+string Employee::get_level_humanized() {
+    for (auto l : LEVELS)
+        if (l.second == level)
+            return l.first;
+
+    return "NO_LEVEL_WTF";
+}
+
+int Employee::count_absent_days() {
+    bool is_present[MONTH_DAY_COUNT + 5];
+    memset(is_present, 0, sizeof is_present);
+    for (WorkingDateTime working_date_time : working_date_times)
+        if (working_date_time.get_length())
+            is_present[working_date_time.get_day()] = 1;
+    int absent_days_count = 0;
+    for (int i = 1; i <= MONTH_DAY_COUNT; i++)
+        absent_days_count += !is_present[i];
+    return absent_days_count;
+}
+
+bool Employee::is_busy(WorkingDateTime cur_time) {
+    for (auto time : working_date_times)
+        if (time.overlaps(cur_time))
+            return 1;
+    return 0;
+}
+
+void Employee::print_team_id() {
+    if (team_id == NO_TEAM)
+        cout << "N/A";
+    else
+        cout << team_id;
+    cout << endl;
+}
+
+void Employee::print_salary_report() {
+    cout << "ID: " << id << endl;
+    cout << "Name: " << name << endl;
+    cout << "Total Working Hours: " << calculate_total_working_hours() << endl;
+    cout << "Total Earning: " << total_earning << endl;
+    cout << "---" << endl;
+}
+
+void Employee::print_detailed_salary_report(Database &db) {
+    cout << "ID: " << get_id() << endl;
+    cout << "Name: " << get_name() << endl;
+    cout << "Age: " << get_age() << endl;
+    cout << "Level: " << get_level_humanized() << endl;
+    cout << "Team ID: ", print_team_id();
+    cout << "Total Working Hours: " << calculate_total_working_hours() << endl;
+    cout << "Absent Days: " << count_absent_days() << endl;
+    cout << "Salary: " << fixed << setprecision(0) << get_raw_salary() << endl; // gerd kon agha
+    cout << "Bonus: " << fixed << setprecision(0) << get_bonus_amount(db) << endl;
+    cout << "Tax: " << fixed << setprecision(0) << get_tax_amount(db) << endl;
+    cout << "Total Earning: " << fixed << setprecision(0) << total_earning << endl;
+}
+
+void Employee::join_team(Team team) { team_id = team.get_id(); }
+
+double Employee::get_bonus_amount(Database db) {
+    if (!has_team()) return 0;
+    return raw_salary * db.get_team(team_id).get_bonus_percentage() / 100;
+}
+
+
+void Team::report_salary(Database db){
+    cout << "ID: " << id << endl;
+    cout << "Head ID: " << team_head_id << endl;
+    cout << "Head Name: " << db.get_employee(team_head_id).get_name() << endl;
+    cout << "Team Total Working Hours: " << get_total_working_hours(db) << endl;
+    cout << "Average Member Working Hour: " << fixed << setprecision(1) << get_average_member_working_hours(db) << endl;
+    cout << "Bonus: " << get_bonus_percentage() << endl;
+    cout << "---" << endl;
+    for(int id : member_ids){
+        cout << "Member ID: " << id << endl;
+        cout << "Total Earning: " << fixed << setprecision(0) << db.get_employee(id).get_total_earning() << endl;
+        cout << "---" << endl;  
+    }
+}
+
+int Team::get_total_working_hours(Database db) {
+    int total_working_hours = 0;
+    vector <Employee> employees = db.get_employees();
+    for (Employee employee : employees)
+        total_working_hours += employee.get_total_working_hours();
+    return total_working_hours;
+}
 
 double Team::calculate_variance(Database &db){
     vector < int > total_working_hours;
@@ -821,4 +802,12 @@ bool Team::is_eligible_for_bonus(Database &db){//TODO:test this because testdata
     if(calculate_variance(db) >= bonus_working_hours_max_variance)
         return 0;
     return 1;
+}
+
+vector <Employee> Team::get_employees(Database db) {
+    vector <Employee> members, employees = db.get_employees();
+    for (Employee employee : employees)
+        if (employee.get_team_id() == id)
+            members.push_back(employee);
+    return members;
 }

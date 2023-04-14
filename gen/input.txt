@@ -1,14 +1,9 @@
-report_team_salary 1
-report_employee_salary 2
-report_employee_per_hour 7 12
-add_working_hours 7 30 10 10
-report_total_hours_per_day 37 7
-delete_working_hours 3 12
-report_employee_per_hour 2 24
 find_teams_for_bonus
-update_team_bonus 1 98
-report_employee_per_hour 2 29
-add_working_hours 2 7 14 6
-report_employee_per_hour 3 6
-update_team_bonus 1 86
-show_salary_config erfan
+add_working_hours 1 13 22 14
+delete_working_hours 2 37
+show_salary_config team_lead
+update_team_bonus 1 64
+show_salary_config Aliakbardehkhoda
+add_working_hours 1 19 28 1
+report_total_hours_per_day 30 33
+report_employee_per_hour 2 16

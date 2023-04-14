@@ -1,0 +1,25 @@
+NO-BONUS
+Base Salary:2
+Salary Per Hour:6
+Salary Per Extra Hour:9
+Official Working Hour:0
+Tax:4%
+OK
+INVALID_LEVEL
+2-3: 0.1
+3-4: 0.1
+4-5: 0.1
+5-6: 0.3
+6-7: 0.3
+7-8: 0.4
+8-9: 0.4
+9-10: 0.4
+10-11: 0.4
+11-12: 0.4
+12-13: 0.4
+13-14: 0.4
+14-15: 0.4
+15-16: 0.4
+---
+Period(s) with Max Working Employees: 7-8 8-9 9-10 10-11 11-12 12-13 13-14 14-15 15-16 
+Period(s) with Min Working Employees: 2-3 3-4 4-5 

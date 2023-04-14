@@ -129,7 +129,7 @@ void make_hours(){
     freopen(file_name.c_str(), "w", stdout);
     cout << "employee_id,day,working_interval" << endl;
     int ranges = (emp_cnt*3) + rng()%emp_cnt;
-    for(int id : emp_id){
+    for(int id = 0 ; id < emp_cnt ; id ++){
         bool ok = 0;
         while(!ok){
             int emp_ind = id;

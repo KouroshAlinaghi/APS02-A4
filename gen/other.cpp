@@ -126,10 +126,10 @@ public:
     int bonus_min_working_hour;
     double bonus_working_hour_max_variance;
     int bonus_percentage;
-    int all_team_members_total_working_hour(vector<workingHour> working_hour_data);
     void set_teams_info(string t, string t_h_i, string m, string b_m_w_h, string b_w_h_v);
     double get_bonus_working_hour_max_variance() { return bonus_working_hour_max_variance; }
     double all_team_members_total_working_hour_variance(vector<workingHour> working_hour_data, int all_team_members_working_hours, int num_team_members);
+    int calculate_total_team_hours(vector<workingHour> working_hour_data);
 
 private:
 };
@@ -169,7 +169,6 @@ public:
     void print_employee_personal_info();
 
 private:
-    int calculate_total_team_hours(int team_id);
     void print_members_data(teams team_target);
     vector<teams> sort_teams_by_ids(vector<teams> t);
     bool check_day_validation(int day_num);
@@ -863,8 +862,9 @@ void command ::report_team_salary(int team_id)
     cout << "Head ID:" << team_target.team_head_id << '\n';
     employees head = find_employee_by_id(team_target.team_head_id);
     cout << "Head Name:" << head.name << '\n';
-    cout << "Team Total Working Hours:" << calculate_total_team_hours(team_id) << '\n';
-    cout << "Average Member Working Hour:" << fixed << setprecision(1) << calculate_total_team_hours(team_id) / teams_data[team_id - 1].member_ids.size() << '\n';
+    cout << "Team Total Working Hours:" << team_target.calculate_total_team_hours(working_hour_data) << '\n';
+    cout << "Average Member Working Hour:" << fixed << setprecision(1) << 
+    team_target.calculate_total_team_hours(working_hour_data) / team_target.member_ids.size() << '\n';
     cout << "Bonus:" << team_target.bonus_percentage << '\n';
     cout << "---" << '\n';
     print_members_data(team_target);
@@ -874,7 +874,7 @@ teams command::find_team_by_data(int data_id)
 {
     for (int i = 0; i < teams_data.size(); i++)
     {
-        if (teams_data[i].team_head_id == data_id)
+        if (teams_data[i].team_id == data_id)
         {
             return teams_data[i];
         }
@@ -882,22 +882,23 @@ teams command::find_team_by_data(int data_id)
     return teams_data[0];
 }
 
-int command::calculate_total_team_hours(int team_id)
+int teams::calculate_total_team_hours(vector<workingHour> working_hour_data)
 {
     int total_hours_value = 0;
-    for (int i = 0; i < teams_data[team_id - 1].member_ids.size(); i++)
+    for (int i = 0; i < member_ids.size(); i++)
     {
-        for (int j = 0; j < teams_data[team_id - 1].member_ids.size(); j++)
-        {
-            total_hours_value += working_hour_data[teams_data[team_id - 1].member_ids[j] - 1].each_employee_total_working_hour();
-        }
+        int emp_index = find_persons_id(working_hour_data, member_ids[i]);
+        total_hours_value += working_hour_data[emp_index].each_employee_total_working_hour();
     }
     return total_hours_value;
 }
 
 void command::print_members_data(teams team_target)
 {
-
+    if (team_target.member_ids.size() == 1)
+    {
+        return;
+    }
     sort(team_target.member_ids.begin(), team_target.member_ids.end());
     for (int i = 0; i < team_target.member_ids.size(); i++)
     {
@@ -1055,22 +1056,35 @@ int find_persons_id(vector<workingHour> w, int persons_id)
     return MAX_INPUT;
 }
 
+vector<vector<double>> round_report_vec(vector<vector<double>> report_vec)
+{
+    vector<vector<double>> rounded_vec;
+    for (int i = 0; i < report_vec.size(); i++)
+    {
+        double rounded_value = report_vec[i][1] * pow(10.0, double(1));
+        rounded_value = round(rounded_value) * pow(10.0, double(-1));
+        rounded_vec.push_back({report_vec[i][0], rounded_value});
+    }
+    return rounded_vec;
+}
+
 void command::print_report_employee_per_hour(vector<vector<double>> report_vec)
 {
+    vector<vector<double>> rounded_vec = round_report_vec(report_vec);
     for (int i = 0; i < report_vec.size(); i++)
     {
         cout << int(report_vec[i][0]) << "-" << int(report_vec[i][0]) + 1 << ": "
              << fixed << showpoint << setprecision(1) << report_vec[i][1] << '\n';
     }
     cout << "---" << '\n';
-    vector<int> busiest_hour = find_busiest(report_vec);
+    vector<int> busiest_hour = find_busiest(rounded_vec);
     cout << "Period(s) with Max Working Employees: ";
     for (auto x : busiest_hour)
     {
         cout << x << "-" << x + 1 << " ";
     }
     cout << '\n';
-    vector<int> emptiest_hour = find_emptiest(report_vec);
+    vector<int> emptiest_hour = find_emptiest(rounded_vec);
     cout << "Period(s) with Min Working Employees: ";
     for (auto x : emptiest_hour)
     {
@@ -1085,7 +1099,7 @@ void command::report_employee_per_hour(int start_hour, int end_hour)
         return;
     int num_person = 0;
     vector<vector<double>> report_vec;
-    for (int hour = start_hour; hour <= end_hour; hour++)
+    for (int hour = start_hour; hour < end_hour; hour++)
     {
         for (int i = 0; i < working_hour_data.size(); i++)
         {
@@ -1132,12 +1146,13 @@ void command::print_report_total_hours(vector<vector<double>> report_vec)
 vector<int> command::find_busiest(vector<vector<double>> report_vec)
 {
     int largest = 0;
-    vector<int> busiest_day, vec_person;
+    vector<int> busiest_day;
+    vector<double> vec_person;
     for (int i = 0; i < report_vec.size(); i++)
     {
         vec_person.push_back(report_vec[i][1]);
     }
-    int max = *max_element(vec_person.begin(), vec_person.end());
+    double max = *max_element(vec_person.begin(), vec_person.end());
     for (int i = 0; i < report_vec.size(); i++)
     {
         if (report_vec[i][1] == max)
@@ -1149,12 +1164,13 @@ vector<int> command::find_busiest(vector<vector<double>> report_vec)
 vector<int> command::find_emptiest(vector<vector<double>> report_vec)
 {
     int smallest = 0;
-    vector<int> emptiest_day, vec_person;
+    vector<int> emptiest_day;
+    vector<double> vec_person;
     for (int i = 0; i < report_vec.size(); i++)
     {
         vec_person.push_back(report_vec[i][1]);
     }
-    int min = *min_element(vec_person.begin(), vec_person.end());
+    double min = *min_element(vec_person.begin(), vec_person.end());
     for (int i = 0; i < report_vec.size(); i++)
     {
         if (report_vec[i][1] == min)
@@ -1199,16 +1215,6 @@ int find_team_id_employee(int id, vector<teams> team_data)
     }
     return MAX_INPUT;
 }
-int teams::all_team_members_total_working_hour(vector<workingHour> working_hour_data)
-{
-    int sum_total_hours = 0;
-    for (int i = 0; i < member_ids.size(); i++)
-    {
-        int emp_index = find_persons_id(working_hour_data, member_ids[i]);
-        sum_total_hours = sum_total_hours + working_hour_data[emp_index].each_employee_total_working_hour();
-    }
-    return sum_total_hours;
-}
 
 double teams::all_team_members_total_working_hour_variance(vector<workingHour> working_hour_data, int all_team_members_working_hours, int num_team_members)
 {
@@ -1228,7 +1234,7 @@ void command::find_teams_for_bonus()
     int flag = 0;
     for (int i = 0; i < teams_data.size(); i++)
     {
-        int all_team_members_working_hours = teams_data[i].all_team_members_total_working_hour(working_hour_data);
+        int all_team_members_working_hours = teams_data[i].calculate_total_team_hours(working_hour_data);
         int num_team_members = teams_data[i].member_ids.size();
         double all_team_members_variance = teams_data[i].all_team_members_total_working_hour_variance(working_hour_data, all_team_members_working_hours, num_team_members);
         if (all_team_members_working_hours > teams_data[i].bonus_min_working_hour && all_team_members_variance < teams_data[i].bonus_working_hour_max_variance)

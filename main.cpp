@@ -101,8 +101,8 @@ public:
     void recalculate_salaries();
     void report_employee_per_hour(int l, int r);
     int count_busy_employees(TimeRange time);
-    int min_value_in_map(map<TimeRange,int>);
-    int max_value_in_map(map<TimeRange,int>);
+    int min_value_in_map(map<TimeRange,double>);
+    int max_value_in_map(map<TimeRange,double>);
     void find_teams_for_bonus(Database &db);
     int get_total_working_hours_of_employee(int id);
     double calculate_avg(vector < int > vals);
@@ -506,12 +506,21 @@ int Database::count_busy_employees(TimeRange time){
     return cnt;
 }
 
-int Database::max_value_in_map(map<TimeRange, int> mp){
-    return max_element(mp.begin(), mp.end(), [](pair <TimeRange, int> x, pair <TimeRange, int> y){return x.second < y.second;})->second;
+double rounded(double x, int precision){
+    for(int i = 0 ; i < precision ; i ++)
+        x *= 10;
+    x = int(x);
+    for(int i = 0 ; i < precision ; i ++)
+        x /= 10;
+    return x;
 }
 
-int Database::min_value_in_map(map<TimeRange, int> mp){
-    return min_element(mp.begin(), mp.end(), [](pair <TimeRange, int> x, pair <TimeRange, int> y){return x.second < y.second;})->second;
+int Database::max_value_in_map(map<TimeRange,double> mp){
+    return max_element(mp.begin(), mp.end(), [](pair <TimeRange,double> x, pair <TimeRange,double> y){return x.second < y.second;})->second;
+}
+
+int Database::min_value_in_map(map<TimeRange,double> mp){
+    return min_element(mp.begin(), mp.end(), [](pair <TimeRange,double> x, pair <TimeRange,double> y){return x.second < y.second;})->second;
 }
 
 void Database::report_employee_per_hour(int l, int r){ 
@@ -520,27 +529,27 @@ void Database::report_employee_per_hour(int l, int r){
         cout << "INVALID_ARGUMENTS" << endl;
         return;
     }
-    map<TimeRange,int> working_cnt;
+    map<TimeRange,double> rounded_working_avg;
     for(int start = l ; start < r ; start ++){
-        TimeRange cur_time = {start, start+1};
-        working_cnt[cur_time] = count_busy_employees(cur_time);
+        TimeRange cur_time = {start, start+1}; 
         cout << start << '-' << start+1 << ": ";
-        cout << fixed << setprecision(1) << double(working_cnt[cur_time])/MONTH_DAY_COUNT;
+        rounded_working_avg[cur_time] = rounded(double(count_busy_employees(cur_time))/MONTH_DAY_COUNT, 1);
+        cout << fixed << setprecision(1) << rounded_working_avg[cur_time];
         cout << endl;
     }
     cout << "---" << endl;
-    int max_cnt = max_value_in_map(working_cnt);
-    int min_cnt = min_value_in_map(working_cnt);
+    double max_val = max_value_in_map(rounded_working_avg);
+    double min_val = min_value_in_map(rounded_working_avg);
     cout << "Period(s) with Max Working Employees: ";
     for(int start = l ; start < r ; start ++){
         TimeRange cur_time = {start, start+1};
-        if(working_cnt[cur_time] == max_cnt)
+        if(rounded_working_avg[cur_time] == max_val)
             cout << start << '-' << start + 1 << ' ';
     }
     cout << endl << "Period(s) with Min Working Employees: ";
     for(int start = l ; start < r ; start ++){
         TimeRange cur_time = {start, start+1};
-        if(working_cnt[cur_time] == min_cnt)
+        if(rounded_working_avg[cur_time] == min_val)
             cout << start << '-' << start + 1 << ' ';
     }
     cout << endl;

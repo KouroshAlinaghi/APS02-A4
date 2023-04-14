@@ -772,7 +772,7 @@ void Team::report_salary(Database db){
     cout << "Head ID: " << team_head_id << endl;
     cout << "Head Name: " << db.get_employee(team_head_id).get_name() << endl;
     cout << "Team Total Working Hours: " << get_total_working_hours(db) << endl;
-    cout << "Average Member Working Hour: " << fixed << setprecision(1) << get_average_member_working_hours(db) << endl;
+    cout << "Average Member Working Hours: " << fixed << setprecision(1) << get_average_member_working_hours(db) << endl;
     cout << "Bonus: " << get_bonus_percentage() << endl;
     cout << "---" << endl;
     for(int id : member_ids){

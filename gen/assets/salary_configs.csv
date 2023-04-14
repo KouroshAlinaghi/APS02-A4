@@ -1,0 +1,5 @@
+level,base_salary,salary_per_hour,salary_per_extra_hour,official_working_hours,tax_percentage
+junior,2,4,7,6,2
+team_lead,8,8,5,6,10
+expert,8,0,0,5,6
+senior,6,1,8,6,11

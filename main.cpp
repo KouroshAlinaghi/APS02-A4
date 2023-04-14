@@ -384,9 +384,9 @@ void Database::report_total_hours_in_range(int l, int r){
     }
     int total_working_hours[MONTH_DAY_COUNT + 5];
     memset(total_working_hours, 0, sizeof total_working_hours);
-    for(int day = l, indx = 1 ; day <= r ; day ++, indx++)
+    for(int day = l ; day <= r ; day ++)
         total_working_hours[day] = get_total_working_hours_of_day(day),
-        cout << "DAY #" << indx << ": " << total_working_hours[day] << endl;
+        cout << "DAY #" << day << ": " << total_working_hours[day] << endl;
     cout << "---" << endl;
     int max_working_hours = *max_element(total_working_hours + l, total_working_hours + r + 1);
     int min_working_hours = *min_element(total_working_hours + l, total_working_hours + r + 1);

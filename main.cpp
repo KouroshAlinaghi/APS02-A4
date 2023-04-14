@@ -188,7 +188,10 @@ public:
     bool has_team() { return team_id != NO_TEAM; }
     void add_working_date_time(WorkingDateTime working_date_time) { working_date_times.push_back(working_date_time); }
     void delete_working_hours(int day);
-    void recalculate_salary_and_earning(Database db) { total_earning = rounded(raw_salary - get_tax_amount(db) + get_bonus_amount(db), 0); }
+    void recalculate_salary_and_earning(Database db) {
+        raw_salary = calculate_raw_salary(db);
+        total_earning = rounded(raw_salary - get_tax_amount(db) + get_bonus_amount(db), 0);
+    }
     void join_team(Team team);
     int get_total_working_hours();
     bool does_work_on_day(int day);
@@ -375,6 +378,7 @@ int main(int argc, char* argv[]){
     assert(argc > 1);
     Database database;
     get_file_inputs(argv[1], database);
+    database.recalculate_salaries();
     process_stdin_input(database);
     return 0;
 }
@@ -639,14 +643,14 @@ void SalaryConfig::print_config(){
 }
 
 double SalaryConfig::calculate_raw_salary(vector <WorkingDateTime> working_date_times) {
-    double salary = base_salary;
+    double salary = (double)base_salary;
     int total_working_hours = 0;
     for (WorkingDateTime working_date_time : working_date_times) {
         total_working_hours += working_date_time.get_length();
-        salary += (double)working_date_time.get_length() * (double)salary_per_hour;
+        salary += working_date_time.get_length() * salary_per_hour;
     }
     if (total_working_hours > official_working_hours)
-        salary += (double)((double)total_working_hours - (double)official_working_hours) * (double)salary_per_extra_hour;
+        salary += (total_working_hours - official_working_hours) * salary_per_extra_hour;
             
     return salary;
 }

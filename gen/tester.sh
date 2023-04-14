@@ -1,4 +1,5 @@
 ln -s ../main.cpp mine.cpp 2> /dev/null
+mkdir assets 2> /dev/null
 touch mine.txt
 touch other.txt
 g++ -std=c++11 -o mine mine.cpp 2> /dev/null

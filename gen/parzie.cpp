@@ -22,7 +22,8 @@ const string LEVEL3 = "expert";
 const string LEVEL4 = "team_lead";
 
 const int MONTH_SIZE = 30;
-
+const int DAY_SIZE = 24;
+const int ERROR_FIND = -2;
 const string ADD_WORKING_HOURS = "add_working_hours";
 const string DELETE_WORKING_HOURS = "delete_working_hours";
 const string UPDATE_TEAM_BONUS = "update_team_bonus";
@@ -319,7 +320,6 @@ int command ::find_the_level_configs(string level)
     }
     if (level == salary_configs_data[2].level)
     {
-
         return 2;
     }
     if (level == salary_configs_data[3].level)
@@ -329,7 +329,7 @@ int command ::find_the_level_configs(string level)
     else
     {
         cout << INVALID_LEVEL_ERROR << '\n';
-        return MAX_INPUT;
+        return ERROR_FIND;
     }
 }
 
@@ -341,23 +341,33 @@ void command::report_employee_salary(int employee_id)
         return;
     employees target_employee = find_employee_by_id(employee_id);
     int id_level = find_the_level_configs(target_employee.level);
-    cout << "ID:" << target_employee.employee_ID << '\n';
-    cout << "Name:" << trim(target_employee.name) << '\n';
-    cout << "Age:" << target_employee.age << '\n';
-    cout << "Level:" << trim(target_employee.level) << '\n';
+    cout << "ID: " << target_employee.employee_ID << '\n';
+    cout << "Name: " << trim(target_employee.name) << '\n';
+    cout << "Age: " << target_employee.age << '\n';
+    cout << "Level: " << trim(target_employee.level) << '\n';
 
-    if (find_team_id_employee(target_employee.employee_ID, teams_data) < MAX_INPUT)
-        cout << "Team:" << find_team_id_employee(target_employee.employee_ID, teams_data) << '\n';
+    if (find_team_id_employee(target_employee.employee_ID, teams_data) != ERROR_FIND)
+        cout << "Team: " << find_team_id_employee(target_employee.employee_ID, teams_data) << '\n';
     else
-        cout << "Team:N/A\n";
-
+        cout << "Team: N/A\n";
+    int w_id = find_persons_id(working_hour_data, target_employee.employee_ID);
+    if (w_id == ERROR_FIND)
+    {
+        cout << "Total Working Hours: " << 0 << '\n';
+        cout << "Absent Days: " << MONTH_SIZE << '\n';
+        cout << "Salary: " << 0 << '\n';
+        cout << "Bonus: " << find_bonus(employee_id, teams_data) << '\n';
+        cout << "Tax: " << 0 << '\n';
+        cout << "Total Earning: " << 0 << '\n';
+        return;
+    }
     workingHour target_working_hour = find_working_hour(employee_id);
-    cout << "Total Working Hours:" << target_working_hour.each_employee_total_working_hour() << '\n';
-    cout << "Absent Days:" << MONTH_SIZE - target_working_hour.each_employee.size() << '\n';
+    cout << "Total Working Hours: " << target_working_hour.each_employee_total_working_hour() << '\n';
+    cout << "Absent Days: " << MONTH_SIZE - target_working_hour.each_employee.size() << '\n';
     cout << "Salary: " << salary_configs_data[id_level].calculate_total_salary(employee_id, target_working_hour, teams_data) << '\n';
-    cout << "Bonus:" << find_bonus(employee_id, teams_data) << '\n';
-    cout << "Tax:" << salary_configs_data[id_level].calculate_tax_percentage(salary_configs_data[id_level].calculate_total_salary(employee_id, target_working_hour, teams_data)) << '\n';
-    cout << "Total Earning:" << salary_configs_data[id_level].calculate_earning(employee_id, target_working_hour, teams_data) << '\n';
+    cout << "Bonus: " << find_bonus(employee_id, teams_data) << '\n';
+    cout << "Tax: " << salary_configs_data[id_level].calculate_tax_percentage(salary_configs_data[id_level].calculate_total_salary(employee_id, target_working_hour, teams_data)) << '\n';
+    cout << "Total Earning: " << salary_configs_data[id_level].calculate_earning(employee_id, target_working_hour, teams_data) << '\n';
 }
 
 void command::set_database(vector<employees> e, vector<workingHour> w, vector<teams> t, vector<salary_configs> s)
@@ -375,10 +385,18 @@ void command ::report_salary()
     for (int i = 0; i < employee_data.size(); i++)
     {
         int id_level = find_the_level_configs(employee_data[i].level);
-        cout << "ID:" << employee_data[i].employee_ID << '\n';
-        cout << "Name:" << employee_data[i].name << '\n';
-        cout << "Total Working Hours:" << working_hour_data[i].each_employee_total_working_hour() << '\n';
-        cout << "Total earning:" << salary_configs_data[id_level].calculate_earning(employee_data[i].employee_ID, working_hour_data[i], teams_data) << '\n';
+        cout << "ID: " << employee_data[i].employee_ID << '\n';
+        cout << "Name: " << employee_data[i].name << '\n';
+        int w_id = find_persons_id(working_hour_data, employee_data[i].employee_ID);
+        if (w_id == ERROR_FIND)
+        {
+            cout << "Total Working Hours: " << 0 << '\n';
+            cout << "Total Earning: " << 0 << '\n';
+            cout << "---" << '\n';
+            return;
+        }
+        cout << "Total Working Hours: " << working_hour_data[i].each_employee_total_working_hour() << '\n';
+        cout << "Total Earning: " << salary_configs_data[id_level].calculate_earning(employee_data[i].employee_ID, working_hour_data[i], teams_data) << '\n';
         cout << "---" << '\n';
     }
 }
@@ -434,13 +452,18 @@ void workingHour::add_working_time(int day_no, int start_time, int end_time)
 
 void command::add_working_time_for_specific_employee(int id, int day_number, int start_time, int end_time)
 {
+    if (check_id_validation(id) == false)
+        return;
     if (check_day_validation(day_number) == false)
         return;
     if (check_time_validation(start_time, end_time) == false)
         return;
-    if (check_id_validation(id) == false)
-        return;
     int index_employee = find_persons_id(working_hour_data, id);
+    if (index_employee == ERROR_FIND)
+    {
+        cout << INVALID_EMPLOYEE_ID_ERROR << '\n';
+        return;
+    }
     working_hour_data[index_employee].check_time_interval_overlap(day_number, start_time, end_time);
     working_hour_data[index_employee].add_working_time(day_number, start_time, end_time);
     cout << PROCESS_DONE << '\n';
@@ -495,7 +518,7 @@ int salary_configs::calculate_earning(int id, workingHour working_hour_data, vec
 
 void error(string message)
 {
-    cerr << message << endl;
+    cout << message << endl;
 }
 
 vector<string> split_by_delimiter(string str, string delimiter)
@@ -570,25 +593,25 @@ void workingHour::check_data(working_time_info w, time_interval_info t)
 
 void workingHour ::check_number_of_day(working_time_info w)
 {
-    if (w.day > 30 || w.day < 1)
+    if (w.day > MONTH_SIZE || w.day < 1)
     {
-        error("INVALID_ARGUMENTS");
+        error(INVALID_ARGUMENTS_ERROR);
     }
 }
 
 void workingHour::check_time_interval(time_interval_info t)
 {
-    if (t.start_time_interval < 0 || t.start_time_interval > 24 || t.end_time_interval < 0 || t.end_time_interval > 24 || t.start_time_interval > t.end_time_interval)
+    if (t.start_time_interval < 0 || t.start_time_interval > DAY_SIZE || t.end_time_interval < 0 || t.end_time_interval > DAY_SIZE || t.start_time_interval > t.end_time_interval)
     {
-        error("INVALID_ARGUMENTS");
+        error(INVALID_ARGUMENTS_ERROR);
     }
 }
 
 bool check_day_validation(int day_num)
 {
-    if (day_num > 30 || day_num < 1)
+    if (day_num > MONTH_SIZE || day_num < 1)
     {
-        error("INVALID_ARGUMENTS");
+        error(INVALID_ARGUMENTS_ERROR);
         return false;
     }
     return true;
@@ -596,9 +619,9 @@ bool check_day_validation(int day_num)
 
 bool check_time_validation(int start_time, int end_time)
 {
-    if (start_time < 0 || start_time > 24 || end_time < 0 || end_time > 24 || start_time >= end_time)
+    if (start_time < 0 || start_time > DAY_SIZE || end_time < 0 || end_time > DAY_SIZE || start_time >= end_time)
     {
-        error("INVALID_ARGUMENTS");
+        error(INVALID_ARGUMENTS_ERROR);
         return false;
     }
     return true;
@@ -813,16 +836,16 @@ void command ::show_salary_config(string level)
     int level_id = find_the_level_configs(level);
     if (validate_level(level_id) == false)
         return;
-    cout << "Base Salary:" << salary_configs_data[level_id].base_salary << '\n';
-    cout << "Salary Per Hour:" << salary_configs_data[level_id].salary_per_hour << '\n';
-    cout << "Salary Per Extra Hour:" << salary_configs_data[level_id].salary_per_extra_hour << '\n';
-    cout << "Official Working Hour:" << salary_configs_data[level_id].official_working_hours << '\n';
-    cout << "Tax:" << salary_configs_data[level_id].tax_percentage << "%" << '\n';
+    cout << "Base Salary: " << salary_configs_data[level_id].base_salary << '\n';
+    cout << "Salary Per Hour: " << salary_configs_data[level_id].salary_per_hour << '\n';
+    cout << "Salary Per Extra Hour: " << salary_configs_data[level_id].salary_per_extra_hour << '\n';
+    cout << "Official Working Hours: " << salary_configs_data[level_id].official_working_hours << '\n';
+    cout << "Tax: " << salary_configs_data[level_id].tax_percentage << "%" << '\n';
 }
 
 bool command::validate_level(int level_id)
 {
-    if (level_id == MAX_INPUT)
+    if (level_id == ERROR_FIND)
     {
         return false;
     }
@@ -858,14 +881,13 @@ void command ::report_team_salary(int team_id)
         return;
 
     teams team_target = find_team_by_data(team_id);
-    cout << "ID:" << team_target.team_id << '\n';
-    cout << "Head ID:" << team_target.team_head_id << '\n';
+    cout << "ID: " << team_target.team_id << '\n';
+    cout << "Head ID: " << team_target.team_head_id << '\n';
     employees head = find_employee_by_id(team_target.team_head_id);
-    cout << "Head Name:" << head.name << '\n';
-    cout << "Team Total Working Hours:" << team_target.calculate_total_team_hours(working_hour_data) << '\n';
-    cout << "Average Member Working Hour:" << fixed << setprecision(1) << 
-    team_target.calculate_total_team_hours(working_hour_data) / team_target.member_ids.size() << '\n';
-    cout << "Bonus:" << team_target.bonus_percentage << '\n';
+    cout << "Head Name: " << head.name << '\n';
+    cout << "Team Total Working Hours: " << team_target.calculate_total_team_hours(working_hour_data) << '\n';
+    cout << "Average Member Working Hour: " << fixed << setprecision(1) << team_target.calculate_total_team_hours(working_hour_data) / team_target.member_ids.size() << '\n';
+    cout << "Bonus: " << team_target.bonus_percentage << '\n';
     cout << "---" << '\n';
     print_members_data(team_target);
 }
@@ -888,6 +910,8 @@ int teams::calculate_total_team_hours(vector<workingHour> working_hour_data)
     for (int i = 0; i < member_ids.size(); i++)
     {
         int emp_index = find_persons_id(working_hour_data, member_ids[i]);
+        if (emp_index == ERROR_FIND)
+            continue;
         total_hours_value += working_hour_data[emp_index].each_employee_total_working_hour();
     }
     return total_hours_value;
@@ -904,9 +928,16 @@ void command::print_members_data(teams team_target)
     {
         employees member = find_employee_by_id(team_target.member_ids[i]);
         int level_id = find_the_level_configs(member.level);
-        cout << "Member ID:" << member.employee_ID << '\n';
+        cout << "Member ID: " << member.employee_ID << '\n';
         workingHour working_hour_target = find_working_hour(member.employee_ID);
-        cout << "Total Earning:" << salary_configs_data[level_id].calculate_earning(member.employee_ID, working_hour_target, teams_data) << '\n';
+        int w_id = find_persons_id(working_hour_data, employee_data[i].employee_ID);
+        if (w_id == ERROR_FIND)
+        {
+            cout << "Total Earning: " << 0 << '\n';
+            cout << "---" << '\n';
+            return;
+        }
+        cout << "Total Earning: " << salary_configs_data[level_id].calculate_earning(member.employee_ID, working_hour_target, teams_data) << '\n';
         cout << "---" << '\n';
     }
 }
@@ -929,6 +960,8 @@ void command::delete_working_time_for_specific_employee(int id, int day_number)
     if (check_day_validation(day_number) == false)
         return;
     int index_employee = find_persons_id(working_hour_data, id);
+    if (index_employee == ERROR_FIND)
+        return;
     working_hour_data[index_employee].check_day_exists(day_number);
     working_hour_data[index_employee].delete_working_time(day_number);
     cout << PROCESS_DONE << '\n';
@@ -975,6 +1008,7 @@ bool command::check_id_validation(int id)
             return true;
         }
     }
+
     error(INVALID_EMPLOYEE_ID_ERROR);
     return false;
 }
@@ -1053,7 +1087,7 @@ int find_persons_id(vector<workingHour> w, int persons_id)
             return i;
         }
     }
-    return MAX_INPUT;
+    return ERROR_FIND;
 }
 
 vector<vector<double>> round_report_vec(vector<vector<double>> report_vec)
@@ -1213,7 +1247,7 @@ int find_team_id_employee(int id, vector<teams> team_data)
             }
         }
     }
-    return MAX_INPUT;
+    return ERROR_FIND;
 }
 
 double teams::all_team_members_total_working_hour_variance(vector<workingHour> working_hour_data, int all_team_members_working_hours, int num_team_members)
@@ -1223,6 +1257,8 @@ double teams::all_team_members_total_working_hour_variance(vector<workingHour> w
     for (int i = 0; i < member_ids.size(); i++)
     {
         int emp_index = find_persons_id(working_hour_data, member_ids[i]);
+        if (emp_index == ERROR_FIND)
+            continue;
         sum_total_squares = sum_total_squares + pow(mean_working_hour - working_hour_data[emp_index].each_employee_total_working_hour(), 2);
     }
     double variance = sum_total_squares / double(num_team_members);
@@ -1231,6 +1267,7 @@ double teams::all_team_members_total_working_hour_variance(vector<workingHour> w
 
 void command::find_teams_for_bonus()
 {
+
     int flag = 0;
     for (int i = 0; i < teams_data.size(); i++)
     {

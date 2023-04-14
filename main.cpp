@@ -1,3 +1,4 @@
+#include <limits>
 #include <iomanip>
 #include <algorithm>
 #include <cstring>
@@ -101,8 +102,8 @@ public:
     void recalculate_salaries();
     void report_employee_per_hour(int l, int r);
     int count_busy_employees(TimeRange time);
-    int min_value_in_map(map<TimeRange,double>);
-    int max_value_in_map(map<TimeRange,double>);
+    double min_value_in_map(map<TimeRange,double>);
+    double max_value_in_map(map<TimeRange,double>);
     void find_teams_for_bonus(Database &db);
     int get_total_working_hours_of_employee(int id);
     double calculate_avg(vector < int > vals);
@@ -515,12 +516,20 @@ double rounded(double x, int precision){
     return x;
 }
 
-int Database::max_value_in_map(map<TimeRange,double> mp){
-    return max_element(mp.begin(), mp.end(), [](pair <TimeRange,double> x, pair <TimeRange,double> y){return x.second < y.second;})->second;
+double Database::max_value_in_map(map<TimeRange,double> mp){
+    double mx = std::numeric_limits<double>::min();
+    for(auto key_val : mp)
+        if(key_val.second>= mx)
+            mx = key_val.second;
+    return mx;
 }
 
-int Database::min_value_in_map(map<TimeRange,double> mp){
-    return min_element(mp.begin(), mp.end(), [](pair <TimeRange,double> x, pair <TimeRange,double> y){return x.second < y.second;})->second;
+double Database::min_value_in_map(map<TimeRange,double> mp){
+    double mn = std::numeric_limits<double>::max();
+    for(auto key_val : mp)
+        if(key_val.second<= mn)
+            mn = key_val.second;
+    return mn;
 }
 
 void Database::report_employee_per_hour(int l, int r){ 

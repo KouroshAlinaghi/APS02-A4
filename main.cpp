@@ -118,6 +118,7 @@ public:
     int get_total_working_hours_of_employee(int id);
     double calculate_avg(vector < int > vals);
     double calculate_variance(vector < int > vals);
+    void sort_teams();
 };
 
 bool is_invalid_day(int day) { return day < 1 or day > MONTH_DAY_COUNT; }
@@ -343,6 +344,7 @@ void get_teams_input(string file_prefix, Database& db){
     sort(teams_raw_info.begin() + 1, teams_raw_info.end(), first_member_cmp);
     for(int i = 1 ; i < (int)teams_raw_info.size() ; i ++)
         db.add_team(Team(make_map(teams_raw_info[0], teams_raw_info[i])));
+    db.sort_teams();
 }
 
 void get_working_hours_input(string file_prefix, Database& db){
@@ -606,6 +608,7 @@ void Database::add_working_hours(int id, int day, int l, int r) {
         
     emp->add_working_date_time(WorkingDateTime(day, {l, r}));
     cout << "OK" << endl;
+    sort_teams();
 }
 
 void Database::handle_hour_data(Dictionary data) {
@@ -815,4 +818,16 @@ void Team::update_bonus_percentage(int new_bonus_percentage) {
     if (!is_valid_percentage(new_bonus_percentage))
         throw runtime_error("INVALID_ARGUMENTS");
     bonus_percentage = new_bonus_percentage;
+}
+
+void Database::sort_teams(){
+    vector <pair<int, int>> temp_sort;
+    for(Team t : teams)
+        temp_sort.push_back({t.get_total_working_hours(*this), -t.get_id()});
+    sort(temp_sort.begin(), temp_sort.end());
+    reverse(temp_sort.begin(), temp_sort.end());
+    vector <Team> new_teams;
+    for(auto sum_id : temp_sort)
+        new_teams.push_back(get_team(-sum_id.second));
+    teams = new_teams;
 }

@@ -309,6 +309,7 @@ class Team{
         string getInfo();
         void updateBonusPercentage(int newBonusPercentage);
         bool isGoodForBonus();
+        int workingHourSum();
     private:
         int id;
         Employee* head;
@@ -317,7 +318,6 @@ class Team{
         int bonusMinWorkingHours;
         double bonusWorkingHoursMaxVariance;
         int bonus;
-        int workingHourSum();
         double workingHourAverage();
 };
 
@@ -810,9 +810,18 @@ string PedarSahab::updateTeamBonus(string teamIdStr, string newBonusPercentageSt
 string PedarSahab::findTeamsForBonus(){
     ostringstream output;
     int teamCount = 0;
-    for (set< pair<int, int> >::iterator i = teamInd.begin(); i != teamInd.end(); i++){
-        if (teams[i -> second] -> isGoodForBonus()){
-            output << "Team ID: " << teams[i -> second] -> getId() << endl;
+    vector< pair<int, int> > vec;
+
+    for(int i = 0; i < (int)teams.size(); i++){
+        vec.push_back(make_pair(teams[i] -> workingHourSum(), i));
+    }
+
+    sort(all(vec));
+    reverse(all(vec));
+
+    for (int i = 0; i < (int)vec.size(); i++){
+        if (teams[vec[i].second] -> isGoodForBonus()){
+            output << "Team ID: " << teams[vec[i].second] -> getId() << endl;
             teamCount++;
         }
     }

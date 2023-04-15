@@ -34,17 +34,17 @@ Salary: 79060
 Bonus: 0
 Tax: 25299
 Total Earning: 53761
----
 ID: 1
 Head ID: 2
+Head Name: GolnazEmadi
 Team Total Working Hours: 443
 Average Member Working Hours: 221.5
 Bonus: 0
 ---
-ID: 2
+Member ID: 2
 Total Earning: 53761
 ---
-ID: 4
+Member ID: 4
 Total Earning: 46749
 ---
 OK
@@ -57,14 +57,15 @@ Tax: 15%
 OK
 ID: 1
 Head ID: 2
+Head Name: GolnazEmadi
 Team Total Working Hours: 443
 Average Member Working Hours: 221.5
 Bonus: 15
 ---
-ID: 2
+Member ID: 2
 Total Earning: 61825
 ---
-ID: 4
+Member ID: 4
 Total Earning: 53761
 ---
 ID: 5
@@ -78,18 +79,18 @@ Salary: 39000
 Bonus: 0
 Tax: 10920
 Total Earning: 28080
----
 ID: 2
 Head ID: 3
+Head Name: ParvinKarami
 Team Total Working Hours: 428
 Average Member Working Hours: 214.0
 Bonus: 10
 ---
-ID: 3
-Total Earning: 60343
----
-ID: 1
+Member ID: 1
 Total Earning: 23375
+---
+Member ID: 3
+Total Earning: 60343
 ---
 INVALID_LEVEL
 OK
@@ -115,7 +116,6 @@ Salary: 25540
 Bonus: 2554
 Tax: 4214
 Total Earning: 23880
----
 OK
 ID: 3
 Name: ParvinKarami
@@ -128,7 +128,6 @@ Salary: 80920
 Bonus: 8092
 Tax: 28484
 Total Earning: 60528
----
 INVALID_ARGUMENTS
 ID: 1
 Name: AzadehZahedi
@@ -141,20 +140,20 @@ Salary: 26080
 Bonus: 2608
 Tax: 4303
 Total Earning: 24385
----
 OK
 TEAM_NOT_FOUND
 ID: 2
 Head ID: 3
+Head Name: ParvinKarami
 Team Total Working Hours: 458
 Average Member Working Hours: 229.0
 Bonus: 10
 ---
-ID: 3
-Total Earning: 60528
----
-ID: 1
+Member ID: 1
 Total Earning: 24834
+---
+Member ID: 3
+Total Earning: 60528
 ---
 OK
 ID: 1
@@ -195,7 +194,6 @@ Salary: 62332
 Bonus: 9350
 Tax: 17921
 Total Earning: 53761
----
 ID: 1
 Name: AzadehZahedi
 Age: 28
@@ -207,17 +205,17 @@ Salary: 26368
 Bonus: 2637
 Tax: 4351
 Total Earning: 24654
----
 ID: 1
 Head ID: 2
+Head Name: GolnazEmadi
 Team Total Working Hours: 443
 Average Member Working Hours: 221.5
 Bonus: 15
 ---
-ID: 2
+Member ID: 2
 Total Earning: 61825
 ---
-ID: 4
+Member ID: 4
 Total Earning: 53761
 ---
 OK
@@ -232,7 +230,6 @@ Salary: 79780
 Bonus: 7978
 Tax: 28083
 Total Earning: 59675
----
 OK
 ID: 5
 Name: BehzadAbbasi
@@ -245,5 +242,4 @@ Salary: 39400
 Bonus: 0
 Tax: 11032
 Total Earning: 28368
----
 EMPLOYEE_NOT_FOUND

@@ -194,7 +194,6 @@ public:
     void join_team(Team team);
     int get_total_working_hours();
     bool does_work_on_day(int day);
-    int get_total_working_hours();
     string get_level_humanized();
     double get_raw_salary() { return raw_salary; }
     double get_total_earning() { return total_earning; }

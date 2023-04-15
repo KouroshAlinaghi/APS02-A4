@@ -191,9 +191,10 @@ void make_input(){
         if(cmd == 6)
             cout << "show_salary_config " << ((rng()%2) ? random_level() : random_name()) << endl;
         if(cmd == 7){
-            //cout << "update_salary_config" << 
-            //goshadam bara in felan
-            continue;
+            cout << "update_salary_config " << ((rng()%4 == 0) ? "-" : random_level()) << ' ' <<
+            ((rng()%4) ? to_string(rng()%300000) : "-") << ' ' << ((rng()%4) ? to_string(rng()%300000) : "-") << ' ' <<
+            ((rng()%4) ? to_string(rng()%300000) : "-") << ' '  << ((rng()%4) ? to_string(rng()%300) : "-") << ' ' << 
+            ((rng()%4) ? to_string(rng()%101) : "-") << endl;
         }
         if(cmd == 8)
             cout << "add_working_hours " << rng()%emp_id.back() + 1 << ' ' << rng()%40 << ' ' << rng()%30 << ' ' << rng()%30 << endl;
@@ -209,7 +210,7 @@ void make_input(){
 
 int32_t main(int argc, char *argv[]){
 	cin.tie(0)->sync_with_stdio(0);
-    cerr << seed << endl;
+    //cerr << seed << endl;
     if(argc > 1){
         file_addr = argv[1];
     }

@@ -319,14 +319,14 @@ Dictionary make_map(vector < string > keys, vector < string > values){
     return res;
 }
 
-bool employee_cmp(vector<string>a, vector<string>b){
+bool first_member_cmp(vector<string>a, vector<string>b){
     return stoi(a.front()) < stoi(b.front());
 }
 
 void get_employees_input(string file_prefix, Database& db){
     string file_name = file_prefix + EMPLOYEES_FILE_NAME;
     StringTable employees_raw_info = read_csv(file_name.c_str());
-    sort(employees_raw_info.begin() + 1, employees_raw_info.end(), employee_cmp);
+    sort(employees_raw_info.begin() + 1, employees_raw_info.end(), first_member_cmp);
     for(int i = 1 ; i < (int)employees_raw_info.size() ; i ++)
         db.add_employee(Employee(make_map(employees_raw_info[0], employees_raw_info[i]), db));
 }
@@ -341,6 +341,7 @@ void get_salary_configs(string file_prefix, Database& db){
 void get_teams_input(string file_prefix, Database& db){
     string file_name = file_prefix + TEAMS_FILE_NAME;
     StringTable teams_raw_info = read_csv(file_name.c_str());
+    sort(teams_raw_info.begin() + 1, teams_raw_info.end(), first_member_cmp);
     for(int i = 1 ; i < (int)teams_raw_info.size() ; i ++)
         db.add_team(Team(make_map(teams_raw_info[0], teams_raw_info[i])));
 }
@@ -543,9 +544,9 @@ int Database::count_busy_employees(TimeRange time){
 }
 
 double Database::max_value_in_map(map<TimeRange,double> mp){
-    double mx = std::numeric_limits<double>::min();
+    double mx = -std::numeric_limits<double>::max();
     for(auto key_val : mp)
-        if(key_val.second>= mx)
+        if(key_val.second >= mx)
             mx = key_val.second;
     return mx;
 }
@@ -738,7 +739,7 @@ void Employee::print_salary_report() {
     cout << "ID: " << id << endl;
     cout << "Name: " << name << endl;
     cout << "Total Working Hours: " << calculate_total_working_hours() << endl;
-    cout << "Total Earning: " << total_earning << endl;
+    cout << "Total Earning: " << fixed << setprecision(0) << total_earning << endl;
     cout << "---" << endl;
 }
 
@@ -752,7 +753,7 @@ void Employee::print_detailed_salary_report(Database &db) {
     cout << "Absent Days: " << count_absent_days() << endl;
     cout << "Salary: " << fixed << setprecision(0) << get_raw_salary() << endl; // gerd kon agha
     cout << "Bonus: " << fixed << setprecision(0) << get_bonus_amount(db) << endl;
-    cout << "Tax: " << fixed << setprecision(0) << get_tax_amount(db) << endl;
+    cout << "Tax: " << fixed << setprecision(0) << rounded(get_tax_amount(db),1) << endl;
     cout << "Total Earning: " << fixed << setprecision(0) << total_earning << endl;
 }
 
@@ -769,7 +770,7 @@ void Team::report_salary(Database db){
     cout << "Head ID: " << team_head_id << endl;
     cout << "Head Name: " << db.get_employee(team_head_id).get_name() << endl;
     cout << "Team Total Working Hours: " << get_total_working_hours(db) << endl;
-    cout << "Average Member Working Hours: " << fixed << setprecision(1) << get_average_member_working_hours(db) << endl;
+    cout << "Average Member Working Hours: " << fixed << setprecision(1) << rounded(get_average_member_working_hours(db),1) << endl;
     cout << "Bonus: " << get_bonus_percentage() << endl;
     cout << "---" << endl;
     for(int id : member_ids){

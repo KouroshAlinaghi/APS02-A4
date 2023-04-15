@@ -6,7 +6,8 @@ typedef long long ll;
 typedef long double ld;
 typedef pair<int , int> pii;
 
-mt19937 rng(chrono::steady_clock::now().time_since_epoch().count());
+const ll seed = chrono::steady_clock::now().time_since_epoch().count();
+mt19937 rng(seed);
 
 const int maxn = 3e6;
 const ll mod = 1e9+7;
@@ -182,7 +183,7 @@ void make_input(){
         if(cmd == 2)
             cout << "report_employee_salary " << rng()%emp_id.back() + 1 << endl;
         if(cmd == 3)
-            cout << "report_team_salary " << rng()%team_ids.back() + 1 << endl;
+            cout << "report_team_salary " << rng()%((team_ids.empty()) ? 30 : team_ids.back()) + 1 << endl;
         if(cmd == 4)
             cout << "report_total_hours_per_day " << rng()%40 << ' ' << rng()%40 << endl;
         if(cmd == 5)
@@ -199,15 +200,16 @@ void make_input(){
         if(cmd == 9)
             cout << "delete_working_hours " << rng()%emp_id.back() + 1 << ' ' << rng()%40 << endl;
         if(cmd == 10)
-            cout << "update_team_bonus " << rng()%team_ids.back() + 1 << ' ' << rng()%150 << endl;
+            cout << "update_team_bonus " << rng()%((team_ids.empty()) ? 30 : team_ids.back()) + 1 << ' ' << rng()%150 << endl;
         if(cmd == 11)  
-            cout << "find_teams_for_bonus" << endl;
+            continue;//cout << "find_teams_for_bonus" << endl;
 
     }
 }
 
 int32_t main(int argc, char *argv[]){
 	cin.tie(0)->sync_with_stdio(0);
+    cerr << seed << endl;
     if(argc > 1){
         file_addr = argv[1];
     }

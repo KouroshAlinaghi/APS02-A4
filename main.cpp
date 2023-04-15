@@ -246,7 +246,7 @@ public:
     int get_number_of_members(Database db) { return get_employees(db).size(); }
     int get_total_working_hours(Database db);
     double get_average_member_working_hours(Database db) { return (double)get_total_working_hours(db) / (double)get_number_of_members(db); }
-    void update_bonus_percentage(int new_bonus_percentage) { bonus_percentage = new_bonus_percentage; }
+    void update_bonus_percentage(int new_bonus_percentage);
     void report_salary(Database db);
     int get_bonus_percentage() { return bonus_percentage; }
     bool is_eligible_for_bonus(Database &db);
@@ -591,9 +591,6 @@ void Database::report_employee_per_hour(int l, int r){
 }
 
 void Database::update_team_bonus(int team_id, int bonus) {
-    if (!is_valid_percentage(bonus))
-        throw runtime_error("INVALID_ARGUMENTS");
-        
     get_pointer_to_team(team_id)->update_bonus_percentage(bonus);
     cout << "OK" << endl;
 }
@@ -605,7 +602,7 @@ void Database::add_working_hours(int id, int day, int l, int r) {
         throw runtime_error("INVALID_ARGUMENTS");
 
     if (emp->is_busy(WorkingDateTime(day, {l, r})))
-        throw runtime_error("INVALID_ARGUMENTS");
+        throw runtime_error("INVALID_INTERVAL");
         
     emp->add_working_date_time(WorkingDateTime(day, {l, r}));
     cout << "OK" << endl;
@@ -819,4 +816,10 @@ int Employee::get_total_working_hours_on_day(int day){
         if(working_date.get_day() == day)  
             total += working_date.get_length();
     return total;
+}
+
+void Team::update_bonus_percentage(int new_bonus_percentage) {
+    if (!is_valid_percentage(new_bonus_percentage))
+        throw runtime_error("INVALID_ARGUMENTS");
+    bonus_percentage = new_bonus_percentage;
 }

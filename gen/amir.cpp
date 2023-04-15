@@ -170,7 +170,7 @@ public:
     vector<Employee> report_team(string teamId);
     void report_salaries();
     vector<Employee> sort_employee(vector<Employee> &employees);
-    void sort_teams(vector<Team> &teams);
+    void sort_teams();
     int sum_of_working_hours(string team_id);
     void find_teams_for_bonus();
     double variance_of_team(string teamId);
@@ -823,15 +823,23 @@ vector<Employee> Process ::sort_employee(vector<Employee> &employees)
     return employees;
 }
 
-void Process ::sort_teams(vector<Team> &teams)
+void Process ::sort_teams()
 {
     for (int i = 0; i < teams.size() - 1; i++)
         for (int j = i + 1; j < teams.size(); j++)
-            if (sum_of_working_hours(teams[i].get_team_id()) < sum_of_working_hours(teams[j].get_team_id()))
+        {
+            if (sum_of_working_hours(teams[i].get_team_id()) > sum_of_working_hours(teams[j].get_team_id()))
             {
                 swap(teams[i], teams[j]);
                 match_employees_and_teams();
             }
+            if (sum_of_working_hours(teams[i].get_team_id()) == sum_of_working_hours(teams[j].get_team_id()) &&
+                stoi(teams[i].get_team_id()) > stoi(teams[j].get_team_id()))
+            {
+                swap(teams[i], teams[j]);
+                match_employees_and_teams();
+            }
+        }
 }
 
 int Process ::sum_of_working_hours(string teamId)
@@ -897,7 +905,10 @@ void Process ::get_command()
         if (command == "show_salary_config")
             show_salary_config(command_words[1]);
         if (command == "add_working_hours")
+        {
             add_working_hour(command_words);
+            sort_teams();
+        }
         if (command == "update_salary_config")
             update_salary_config(command_words);
         if (command == "report_total_hours_per_day")
@@ -907,7 +918,10 @@ void Process ::get_command()
         if (command == "update_team_bonus")
             update_team_bonus(command_words);
         if (command == "delete_working_hours")
+        {
             delete_working_hours(command_words);
+            sort_teams();
+        }
         if (command == "report_employee_salary")
             report_employee_salary(command_words);
         if (command == "report_team_salary")
@@ -960,7 +974,7 @@ void Process ::load_data(string folder)
     match_employees_and_teams();
     match_employees_and_levels();
     sort_employee(employees);
-    sort_teams(teams);
+    sort_teams();
 }
 
 int Process ::find_employee(int id)

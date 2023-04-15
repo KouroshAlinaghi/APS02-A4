@@ -38,32 +38,103 @@ typedef pair<int, int> TimeRange;
 enum ProficiencyLevel { JUNIOR, EXPERT, SENIOR, TEAM_LEAD };
 map<string, ProficiencyLevel> LEVELS{{"team_lead", TEAM_LEAD}, {"senior", SENIOR}, {"expert", EXPERT}, {"junior", JUNIOR}};
 
-ProficiencyLevel get_level(string level) {
-    if (!LEVELS.count(level))
-        throw runtime_error("INVALID_LEVEL");
+namespace util {
+    ProficiencyLevel get_level(string level) {
+        if (!LEVELS.count(level))
+            throw runtime_error("INVALID_LEVEL");
 
-    return LEVELS[level];
+        return LEVELS[level];
+    }
+
+    double rounded(double x, int precision){
+        for(int i = 0 ; i < precision ; i ++)
+            x *= 10;
+        x = round(x);
+        for(int i = 0 ; i < precision ; i ++)
+            x /= 10;
+        return x;
+    }    
+
+    bool is_invalid_day(int day) { return day < 1 or day > MONTH_DAY_COUNT; }
+
+    vector<int> string_to_int_vector(const vector<string>& str_vector) {
+        vector<int> int_vector;
+        for (const auto& str : str_vector)
+            int_vector.push_back(stoi(str));
+        return int_vector;
+    }
+
+    TimeRange vector_to_pair(const vector<string>& int_vector) {
+        return make_pair(stoi(int_vector[0]), stoi(int_vector[1]));
+    }
+
+    bool is_invalid_date_range(int l, int r){
+        if(r < l)
+            return 1;
+        if(l < 1)
+            return 1;
+        if(r > MONTH_DAY_COUNT)
+            return 1;
+        return 0;
+    }
+
+    bool is_invalid_time_range(int l, int r){
+        if(r <= l)
+            return 1;
+        if(l < 0)
+            return 1;
+        if(r > MAX_HOUR_VALUE)
+            return 1;
+        return 0;
+    }
+
+    bool is_valid_percentage(int x) { return x >= 0 and x <= 100; }
+
+    bool first_member_cmp(vector<string>a, vector<string>b){
+        return stoi(a.front()) < stoi(b.front());
+    }
 }
 
-vector <string> split(string str, char delimeter){
-    vector <string> res;
-    string cur = "";
-    for(char c : str)
-        if(cur.size() and (c == delimeter or c == '\r'))
-            res.push_back(cur), cur = "";
-        else
-            cur += c;
-    if(cur.size())res.push_back(cur);
-    return res;
-}
+namespace input {
+    vector <string> split(string str, char delimeter){
+        vector <string> res;
+        string cur = "";
+        for(char c : str)
+            if(cur.size() and (c == delimeter or c == '\r'))
+                res.push_back(cur), cur = "";
+            else
+                cur += c;
+        if(cur.size())res.push_back(cur);
+        return res;
+    }
 
-double rounded(double x, int precision){
-    for(int i = 0 ; i < precision ; i ++)
-        x *= 10;
-    x = round(x);
-    for(int i = 0 ; i < precision ; i ++)
-        x /= 10;
-    return x;
+    string read_next_line(ifstream& file){
+        string res;
+        getline(file, res);
+        return res;
+    }
+
+    StringTable read_csv(string file_name){
+        ifstream file(file_name);
+        vector <string> new_line;
+        StringTable lines;
+        while(file.peek() != EOF){
+            new_line = input::split(read_next_line(file), ',');
+            lines.push_back(new_line);
+        }
+        return lines;
+    }
+
+    Dictionary make_map(vector < string > keys, vector < string > values){
+        Dictionary res;
+        assert(keys.size() == values.size());
+        for(int i = 0 ; i < (int)keys.size() ; i ++)
+            res[keys[i]] = values[i];
+        return res;
+    }
+
+    void process_stdin_input(Database &db);
+
 }
 
 class WorkingDateTime {
@@ -90,6 +161,10 @@ private:
     SalaryConfig* get_pointer_to_salary_config(ProficiencyLevel level);
     Team* get_pointer_to_team(int id);
     Employee* get_pointer_to_employee(int id);
+    void get_employees_input(string file_prefix);
+    void get_salary_configs(string file_prefix);
+    void get_teams_input(string file_prefix);
+    void get_working_hours_input(string file_prefix);
 public:
     SalaryConfig get_salary_config(ProficiencyLevel level);
     void add_employee(Employee employee);
@@ -119,9 +194,8 @@ public:
     double calculate_avg(vector < int > vals);
     double calculate_variance(vector < int > vals);
     void sort_teams();
+    void get_file_inputs(string file_prefix);
 };
-
-bool is_invalid_day(int day) { return day < 1 or day > MONTH_DAY_COUNT; }
 
 class SalaryConfig {
 private:
@@ -138,10 +212,10 @@ public:
         salary_per_extra_hour = stoi(salary_config["salary_per_extra_hour"]);
         official_working_hours = stoi(salary_config["official_working_hours"]);
         tax_percentage = stoi(salary_config["tax_percentage"]);
-        level = ::get_level(salary_config["level"]);
+        level = util::get_level(salary_config["level"]);
     }
     double calculate_raw_salary(vector <WorkingDateTime> working_date_times);
-    double get_tax_amount(double salary) { return rounded(salary * (double)tax_percentage / 100.0, 0); }
+    double get_tax_amount(double salary) { return util::rounded(salary * (double)tax_percentage / 100.0, 0); }
     ProficiencyLevel get_level() { return level; }
     int get_base_salary() { return base_salary; }
     int get_salary_per_hour() { return salary_per_hour; }
@@ -179,7 +253,7 @@ public:
         id = stoi(data["id"]);
         name = data["name"];
         age = stoi(data["age"]);
-        level = ::get_level(data["level"]);
+        level = util::get_level(data["level"]);
         team_id = NO_TEAM;
         recalculate_salary_and_earning(db);
     }
@@ -202,7 +276,7 @@ public:
     int get_age() { return age; }
     int get_team_id() { return team_id; }
     double get_tax_amount(Database db) {
-        return db.get_salary_config(level).get_tax_amount(raw_salary + rounded(get_bonus_amount(db), 0));
+        return db.get_salary_config(level).get_tax_amount(raw_salary + util::rounded(get_bonus_amount(db), 0));
     }
     double get_bonus_amount(Database db);
     int count_absent_days();
@@ -212,13 +286,6 @@ public:
     void print_detailed_salary_report(Database &db);
     int get_total_working_hours_on_day(int day);
 };
-
-vector<int> string_to_int_vector(const vector<string>& str_vector) {
-    vector<int> int_vector;
-    for (const auto& str : str_vector)
-        int_vector.push_back(stoi(str));
-    return int_vector;
-}
 
 class Team {
 private:
@@ -234,7 +301,7 @@ public:
         team_head_id = stoi(data["team_head_id"]);
         bonus_min_working_hours = stoi(data["bonus_min_working_hours"]);
         bonus_working_hours_max_variance = stod(data["bonus_working_hours_max_variance"]);
-        member_ids = string_to_int_vector(split(data["member_ids"], '$'));
+        member_ids = util::string_to_int_vector(input::split(data["member_ids"], '$'));
         sort(member_ids.begin(), member_ids.end());
         bonus_percentage = 0;
     }
@@ -253,156 +320,12 @@ public:
     double calculate_variance(Database &db);
 };
 
-TimeRange vector_to_pair(const vector<string>& int_vector) {
-    return make_pair(stoi(int_vector[0]), stoi(int_vector[1]));
-}
-
-bool is_invalid_date_range(int l, int r){
-    if(r < l)
-        return 1;
-    if(l < 1)
-        return 1;
-    if(r > MONTH_DAY_COUNT)
-        return 1;
-    return 0;
-}
-
-bool is_invalid_time_range(int l, int r){
-    if(r <= l)
-        return 1;
-    if(l < 0)
-        return 1;
-    if(r > MAX_HOUR_VALUE)
-        return 1;
-    return 0;
-}
-
-bool is_valid_percentage(int x) { return x>=0 and x <= 100; }
-
-string read_next_line(ifstream& file){
-    string res;
-    getline(file, res);
-    return res;
-}
-
-StringTable read_csv(string file_name){
-    ifstream file(file_name);
-    vector <string> new_line;
-    StringTable lines;
-    while(file.peek() != EOF){
-        new_line = split(read_next_line(file), ',');
-        lines.push_back(new_line);
-    }
-    return lines;
-}
-
-void ascii(string x){
-    for(char c : x)
-        cout << int(c) << ' ';
-    cout << endl;   
-}
-
-Dictionary make_map(vector < string > keys, vector < string > values){
-    Dictionary res;
-    if(keys.size() != values.size()){
-        cout << values.size() << endl;
-        for(auto x : keys)
-            cout << x << ' ' ;
-        cout << endl;
-        for(auto x : values)
-            ascii(x);
-        cout << endl;
-    }
-    assert(keys.size() == values.size());
-    for(int i = 0 ; i < (int)keys.size() ; i ++)
-        res[keys[i]] = values[i];
-    return res;
-}
-
-bool first_member_cmp(vector<string>a, vector<string>b){
-    return stoi(a.front()) < stoi(b.front());
-}
-
-void get_employees_input(string file_prefix, Database& db){
-    string file_name = file_prefix + EMPLOYEES_FILE_NAME;
-    StringTable employees_raw_info = read_csv(file_name.c_str());
-    sort(employees_raw_info.begin() + 1, employees_raw_info.end(), first_member_cmp);
-    for(int i = 1 ; i < (int)employees_raw_info.size() ; i ++)
-        db.add_employee(Employee(make_map(employees_raw_info[0], employees_raw_info[i]), db));
-}
-
-void get_salary_configs(string file_prefix, Database& db){
-    string file_name = file_prefix + SALARY_CONFIGS_FILE_NAME;
-    StringTable configs_raw_info = read_csv(file_name.c_str());
-    for(int i = 1 ; i < (int)configs_raw_info.size() ; i ++)
-        db.add_config(SalaryConfig(make_map(configs_raw_info[0], configs_raw_info[i])));
-}
-
-void get_teams_input(string file_prefix, Database& db){
-    string file_name = file_prefix + TEAMS_FILE_NAME;
-    StringTable teams_raw_info = read_csv(file_name.c_str());
-    sort(teams_raw_info.begin() + 1, teams_raw_info.end(), first_member_cmp);
-    for(int i = 1 ; i < (int)teams_raw_info.size() ; i ++)
-        db.add_team(Team(make_map(teams_raw_info[0], teams_raw_info[i])));
-    db.sort_teams();
-}
-
-void get_working_hours_input(string file_prefix, Database& db){
-    string file_name = file_prefix + WORKING_HOURS_FILE_NAME;
-    StringTable hours_raw_info = read_csv(file_name.c_str());
-    for(int i = 1 ; i < (int)hours_raw_info.size() ; i ++)
-        db.handle_hour_data(make_map(hours_raw_info[0], hours_raw_info[i]));
-}
-
-void get_file_inputs(string file_prefix, Database &db){
-    get_salary_configs(file_prefix, db);
-    get_employees_input(file_prefix, db);
-    get_teams_input(file_prefix, db);
-    get_working_hours_input(file_prefix, db);
-}
-
-void process_stdin_input(Database &db){
-    string new_line;
-    while(getline(cin, new_line)){
-        vector < string > words = split(new_line, ' ');
-        try {
-            if(words.empty())
-                continue;
-            if(words.front() == "report_salaries")
-                db.report_salaries();
-            if(words.front() == "report_employee_salary")
-                db.report_salary(stoi(words[1]));
-            if(words.front() == "report_team_salary")
-                db.report_team_salary(stoi(words[1]));
-            if(words.front() == "report_total_hours_per_day")
-                db.report_total_hours_in_range(stoi(words[1]), stoi(words[2]));
-            if(words.front() == "report_employee_per_hour")
-                db.report_employee_per_hour(stoi(words[1]), stoi(words[2]));
-            if(words.front() == "show_salary_config")
-                db.print_salary_config(words[1]);
-            if(words.front() == "update_salary_config")
-                db.update_salary_config(vector<string>(words.begin()+1, words.end()));
-            if(words.front() == "add_working_hours")
-                db.add_working_hours(stoi(words[1]), stoi(words[2]), stoi(words[3]), stoi(words[4]));
-            if(words.front() == "delete_working_hours")
-                db.delete_working_hours(stoi(words[1]), stoi(words[2]));
-            if(words.front() == "update_team_bonus")
-                db.update_team_bonus(stoi(words[1]), stoi(words[2]));
-            if(words.front() == "find_teams_for_bonus")
-                db.find_teams_for_bonus(db);
-            db.recalculate_salaries();
-        } catch (exception &e) {
-            cout << e.what() << endl;
-        }
-    }
-}
-
 int main(int argc, char* argv[]){
     assert(argc > 1);
     Database database;
-    get_file_inputs(argv[1], database);
+    database.get_file_inputs(argv[1]);
     database.recalculate_salaries();
-    process_stdin_input(database);
+    input::process_stdin_input(database);
     return 0;
 }
 
@@ -417,7 +340,7 @@ bool WorkingDateTime::overlaps(WorkingDateTime time){
 }
 
 void Database::report_total_hours_in_range(int l, int r){
-    if(is_invalid_date_range(l, r)){
+    if(util::is_invalid_date_range(l, r)){
         cout << "INVALID_ARGUMENTS" << endl;
         return;
     }
@@ -442,7 +365,7 @@ void Database::report_total_hours_in_range(int l, int r){
 }
 
 void Database::print_salary_config(string level_name){
-    get_salary_config(::get_level(level_name)).print_config();
+    get_salary_config(util::get_level(level_name)).print_config();
 }
 
 vector <Employee> Database::get_employees() { return employees; }
@@ -467,7 +390,7 @@ void Database::recalculate_salaries() {
 }
 
 void Database::update_salary_config(vector<string> input){  
-    SalaryConfig* conf = get_pointer_to_salary_config(::get_level(input[0]));
+    SalaryConfig* conf = get_pointer_to_salary_config(util::get_level(input[0]));
     if(input[1] != "-")conf->set_base_salary(stoi(input[1]));
     if(input[2] != "-")conf->set_salary_per_hour(stoi(input[2]));
     if(input[3] != "-")conf->set_salary_per_extra_hour(stoi(input[3]));
@@ -529,7 +452,7 @@ void Database::report_salaries(){
 
 void Database::delete_working_hours(int id, int day){
     Employee* emp = get_pointer_to_employee(id);
-    if (is_invalid_day(day))
+    if (util::is_invalid_day(day))
         throw runtime_error("INVALID_ARGUMENTS");
         
     emp->delete_working_hours(day);
@@ -562,7 +485,7 @@ double Database::min_value_in_map(map<TimeRange,double> mp){
 
 void Database::report_employee_per_hour(int l, int r){ 
     //probably better if this was shorter/decomposed into smaller functions
-    if(::is_invalid_time_range(l, r)){
+    if(util::is_invalid_time_range(l, r)){
         cout << "INVALID_ARGUMENTS" << endl;
         return;
     }
@@ -570,7 +493,7 @@ void Database::report_employee_per_hour(int l, int r){
     for(int start = l ; start < r ; start ++){
         TimeRange cur_time = {start, start+1}; 
         cout << start << '-' << start+1 << ": ";
-        rounded_working_avg[cur_time] = rounded(double(count_busy_employees(cur_time))/MONTH_DAY_COUNT, 1);
+        rounded_working_avg[cur_time] = util::rounded(double(count_busy_employees(cur_time))/MONTH_DAY_COUNT, 1);
         cout << fixed << setprecision(1) << rounded_working_avg[cur_time];
         cout << endl;
     }
@@ -600,7 +523,7 @@ void Database::update_team_bonus(int team_id, int bonus) {
 void Database::add_working_hours(int id, int day, int l, int r) {
     Employee* emp = get_pointer_to_employee(id);
 
-    if (is_invalid_time_range(l, r) or is_invalid_day(day)) 
+    if (util::is_invalid_time_range(l, r) or util::is_invalid_day(day)) 
         throw runtime_error("INVALID_ARGUMENTS");
 
     if (emp->is_busy(WorkingDateTime(day, {l, r})))
@@ -608,14 +531,13 @@ void Database::add_working_hours(int id, int day, int l, int r) {
         
     emp->add_working_date_time(WorkingDateTime(day, {l, r}));
     cout << "OK" << endl;
-    sort_teams();
 }
 
 void Database::handle_hour_data(Dictionary data) {
     int id = stoi(data["employee_id"]);
     int day = stoi(data["day"]);
-    auto times = split(data["working_interval"], '-');
-    auto new_day = WorkingDateTime(day, vector_to_pair(times));
+    auto times = input::split(data["working_interval"], '-');
+    auto new_day = WorkingDateTime(day, util::vector_to_pair(times));
     get_pointer_to_employee(id)->add_working_date_time(new_day);
 }
 
@@ -629,6 +551,7 @@ void Database::report_team_salary(int team_id){
 
 void Database::find_teams_for_bonus(Database &db){
     int bonus_team_count = 0;
+    sort_teams();
     for(auto team : teams)
         if(team.is_eligible_for_bonus(db))
             cout << "Team ID: " << team.get_id() << endl, bonus_team_count++;
@@ -653,6 +576,54 @@ double Database::calculate_variance(vector < int > vals){
     for(int x : vals)
         ans += (x - avg) * (x - avg);
     return ans / n;
+}
+
+void Database::get_salary_configs(string file_prefix){
+    string file_name = file_prefix + SALARY_CONFIGS_FILE_NAME;
+    StringTable configs_raw_info = input::read_csv(file_name.c_str());
+    for(int i = 1 ; i < (int)configs_raw_info.size() ; i ++)
+        add_config(SalaryConfig(input::make_map(configs_raw_info[0], configs_raw_info[i])));
+}
+
+void Database::get_employees_input(string file_prefix){
+    string file_name = file_prefix + EMPLOYEES_FILE_NAME;
+    StringTable employees_raw_info = input::read_csv(file_name.c_str());
+    sort(employees_raw_info.begin() + 1, employees_raw_info.end(), util::first_member_cmp);
+    for(int i = 1 ; i < (int)employees_raw_info.size() ; i ++)
+        add_employee(Employee(input::make_map(employees_raw_info[0], employees_raw_info[i]), *this));
+}
+
+void Database::get_teams_input(string file_prefix){
+    string file_name = file_prefix + TEAMS_FILE_NAME;
+    StringTable teams_raw_info = input::read_csv(file_name.c_str());
+    sort(teams_raw_info.begin() + 1, teams_raw_info.end(), util::first_member_cmp);
+    for(int i = 1 ; i < (int)teams_raw_info.size() ; i ++)
+        add_team(Team(input::make_map(teams_raw_info[0], teams_raw_info[i])));
+}
+
+void Database::get_working_hours_input(string file_prefix){
+    string file_name = file_prefix + WORKING_HOURS_FILE_NAME;
+    StringTable hours_raw_info = input::read_csv(file_name.c_str());
+    for(int i = 1 ; i < (int)hours_raw_info.size() ; i ++)
+        handle_hour_data(input::make_map(hours_raw_info[0], hours_raw_info[i]));
+}
+
+void Database::sort_teams(){
+    vector <pair<int, int>> temp_sort;
+    for(Team t : teams)
+        temp_sort.push_back({t.get_total_working_hours(*this), t.get_id()});
+    sort(temp_sort.begin(), temp_sort.end());
+    vector <Team> new_teams;
+    for(auto sum_id : temp_sort)
+        new_teams.push_back(get_team(sum_id.second));
+    teams = new_teams;
+}
+
+void Database::get_file_inputs(string file_prefix){
+    get_salary_configs(file_prefix);
+    get_employees_input(file_prefix);
+    get_teams_input(file_prefix);
+    get_working_hours_input(file_prefix);
 }
 
 void SalaryConfig::print_config(){
@@ -748,7 +719,7 @@ void Employee::print_detailed_salary_report(Database &db) {
     cout << "Absent Days: " << count_absent_days() << endl;
     cout << "Salary: " << fixed << setprecision(0) << get_raw_salary() << endl; // gerd kon agha
     cout << "Bonus: " << fixed << setprecision(0) << get_bonus_amount(db) << endl;
-    cout << "Tax: " << fixed << setprecision(0) << rounded(get_tax_amount(db),0) << endl;
+    cout << "Tax: " << fixed << setprecision(0) << util::rounded(get_tax_amount(db),0) << endl;
     cout << "Total Earning: " << fixed << setprecision(0) << total_earning << endl;
 }
 
@@ -765,7 +736,7 @@ void Team::report_salary(Database db){
     cout << "Head ID: " << team_head_id << endl;
     cout << "Head Name: " << db.get_employee(team_head_id).get_name() << endl;
     cout << "Team Total Working Hours: " << get_total_working_hours(db) << endl;
-    cout << "Average Member Working Hours: " << fixed << setprecision(1) << rounded(get_average_member_working_hours(db),1) << endl;
+    cout << "Average Member Working Hours: " << fixed << setprecision(1) << util::rounded(get_average_member_working_hours(db),1) << endl;
     cout << "Bonus: " << get_bonus_percentage() << endl;
     cout << "---" << endl;
     for(int id : member_ids){
@@ -815,19 +786,43 @@ int Employee::get_total_working_hours_on_day(int day){
 }
 
 void Team::update_bonus_percentage(int new_bonus_percentage) {
-    if (!is_valid_percentage(new_bonus_percentage))
+    if (!util::is_valid_percentage(new_bonus_percentage))
         throw runtime_error("INVALID_ARGUMENTS");
     bonus_percentage = new_bonus_percentage;
 }
 
-void Database::sort_teams(){
-    vector <pair<int, int>> temp_sort;
-    for(Team t : teams)
-        temp_sort.push_back({t.get_total_working_hours(*this), t.get_id()});
-    sort(temp_sort.begin(), temp_sort.end());
-    reverse(temp_sort.begin(), temp_sort.end());
-    vector <Team> new_teams;
-    for(auto sum_id : temp_sort)
-        new_teams.push_back(get_team(sum_id.second));
-    teams = new_teams;
+void input::process_stdin_input(Database &db){
+    string new_line;
+    while(getline(cin, new_line)){
+        vector < string > words = input::split(new_line, ' ');
+        try {
+            if(words.empty())
+                continue;
+            if(words.front() == "report_salaries")
+                db.report_salaries();
+            if(words.front() == "report_employee_salary")
+                db.report_salary(stoi(words[1]));
+            if(words.front() == "report_team_salary")
+                db.report_team_salary(stoi(words[1]));
+            if(words.front() == "report_total_hours_per_day")
+                db.report_total_hours_in_range(stoi(words[1]), stoi(words[2]));
+            if(words.front() == "report_employee_per_hour")
+                db.report_employee_per_hour(stoi(words[1]), stoi(words[2]));
+            if(words.front() == "show_salary_config")
+                db.print_salary_config(words[1]);
+            if(words.front() == "update_salary_config")
+                db.update_salary_config(vector<string>(words.begin()+1, words.end()));
+            if(words.front() == "add_working_hours")
+                db.add_working_hours(stoi(words[1]), stoi(words[2]), stoi(words[3]), stoi(words[4]));
+            if(words.front() == "delete_working_hours")
+                db.delete_working_hours(stoi(words[1]), stoi(words[2]));
+            if(words.front() == "update_team_bonus")
+                db.update_team_bonus(stoi(words[1]), stoi(words[2]));
+            if(words.front() == "find_teams_for_bonus")
+                db.find_teams_for_bonus(db);
+            db.recalculate_salaries();
+        } catch (exception &e) {
+            cout << e.what() << endl;
+        }
+    }
 }

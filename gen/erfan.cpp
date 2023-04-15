@@ -810,10 +810,10 @@ string PedarSahab::updateTeamBonus(string teamIdStr, string newBonusPercentageSt
 string PedarSahab::findTeamsForBonus(){
     ostringstream output;
     int teamCount = 0;
-    vector< pair<int, int> > vec;
+    vector< pair < pair<int, int> , int > > vec;
 
     for(int i = 0; i < (int)teams.size(); i++){
-        vec.push_back(make_pair(teams[i] -> workingHourSum(), i));
+        vec.push_back({make_pair(teams[i] -> workingHourSum(), teams[i]->getId()), i});
     }
 
     sort(all(vec));

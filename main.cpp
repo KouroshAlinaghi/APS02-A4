@@ -484,7 +484,6 @@ double Database::min_value_in_map(map<TimeRange,double> mp){
 }
 
 void Database::report_employee_per_hour(int l, int r){ 
-    //probably better if this was shorter/decomposed into smaller functions
     if(util::is_invalid_time_range(l, r)){
         cout << "INVALID_ARGUMENTS" << endl;
         return;
@@ -717,7 +716,7 @@ void Employee::print_detailed_salary_report(Database &db) {
     cout << "Team ID: ", print_team_id();
     cout << "Total Working Hours: " << get_total_working_hours() << endl;
     cout << "Absent Days: " << count_absent_days() << endl;
-    cout << "Salary: " << fixed << setprecision(0) << get_raw_salary() << endl; // gerd kon agha
+    cout << "Salary: " << fixed << setprecision(0) << get_raw_salary() << endl; 
     cout << "Bonus: " << fixed << setprecision(0) << get_bonus_amount(db) << endl;
     cout << "Tax: " << fixed << setprecision(0) << util::rounded(get_tax_amount(db),0) << endl;
     cout << "Total Earning: " << fixed << setprecision(0) << total_earning << endl;
@@ -761,7 +760,7 @@ double Team::calculate_variance(Database &db){
     return db.calculate_variance(total_working_hours);
 }
 
-bool Team::is_eligible_for_bonus(Database &db){//TODO:test this because testdata is dogshit
+bool Team::is_eligible_for_bonus(Database &db){
     if(get_total_working_hours(db) <= bonus_min_working_hours)
         return 0;
     if(calculate_variance(db) >= bonus_working_hours_max_variance)

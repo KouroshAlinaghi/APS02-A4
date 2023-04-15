@@ -823,11 +823,11 @@ void Team::update_bonus_percentage(int new_bonus_percentage) {
 void Database::sort_teams(){
     vector <pair<int, int>> temp_sort;
     for(Team t : teams)
-        temp_sort.push_back({t.get_total_working_hours(*this), -t.get_id()});
+        temp_sort.push_back({t.get_total_working_hours(*this), t.get_id()});
     sort(temp_sort.begin(), temp_sort.end());
     reverse(temp_sort.begin(), temp_sort.end());
     vector <Team> new_teams;
     for(auto sum_id : temp_sort)
-        new_teams.push_back(get_team(-sum_id.second));
+        new_teams.push_back(get_team(sum_id.second));
     teams = new_teams;
 }

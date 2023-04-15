@@ -210,7 +210,7 @@ void make_input(){
 
 int32_t main(int argc, char *argv[]){
 	cin.tie(0)->sync_with_stdio(0);
-    //cerr << seed << endl;
+    cerr << seed << endl;
     if(argc > 1){
         file_addr = argv[1];
     }

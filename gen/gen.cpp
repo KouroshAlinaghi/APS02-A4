@@ -202,7 +202,7 @@ void make_input(){
         if(cmd == 10)
             cout << "update_team_bonus " << rng()%((team_ids.empty()) ? 30 : team_ids.back()) + 1 << ' ' << rng()%150 << endl;
         if(cmd == 11)  
-            continue;//cout << "find_teams_for_bonus" << endl;
+            cout << "find_teams_for_bonus" << endl;
 
     }
 }

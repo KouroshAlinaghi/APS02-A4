@@ -140,7 +140,7 @@ public:
         level = ::get_level(salary_config["level"]);
     }
     double calculate_raw_salary(vector <WorkingDateTime> working_date_times);
-    double get_tax_amount(double salary) { return salary * (double)tax_percentage / 100.0; }
+    double get_tax_amount(double salary) { return rounded(salary * (double)tax_percentage / 100.0, 0); }
     ProficiencyLevel get_level() { return level; }
     int get_base_salary() { return base_salary; }
     int get_salary_per_hour() { return salary_per_hour; }
@@ -188,13 +188,13 @@ public:
     void add_working_date_time(WorkingDateTime working_date_time) { working_date_times.push_back(working_date_time); }
     void delete_working_hours(int day);
     void recalculate_salary_and_earning(Database db) {
-        raw_salary = rounded(calculate_raw_salary(db), 0);
-        total_earning = rounded(raw_salary - rounded(get_tax_amount(db), 0) + rounded(get_bonus_amount(db), 0), 0);
+        raw_salary = calculate_raw_salary(db);
+        total_earning = raw_salary - get_tax_amount(db) + get_bonus_amount(db);
     }
     void join_team(Team team);
     int get_total_working_hours();
     bool does_work_on_day(int day);
-    int calculate_total_working_hours();
+    int get_total_working_hours();
     string get_level_humanized();
     double get_raw_salary() { return raw_salary; }
     double get_total_earning() { return total_earning; }
@@ -202,7 +202,7 @@ public:
     int get_age() { return age; }
     int get_team_id() { return team_id; }
     double get_tax_amount(Database db) {
-        return db.get_salary_config(level).get_tax_amount(rounded(raw_salary + rounded(get_bonus_amount(db), 0), 0));
+        return db.get_salary_config(level).get_tax_amount(raw_salary + rounded(get_bonus_amount(db), 0));
     }
     double get_bonus_amount(Database db);
     int count_absent_days();
@@ -634,7 +634,7 @@ void Database::find_teams_for_bonus(Database &db){
         cout << "NO_BONUS_TEAMS" << endl;
 }
 
-int Database::get_total_working_hours_of_employee(int id){ return get_employee(id).calculate_total_working_hours(); }
+int Database::get_total_working_hours_of_employee(int id){ return get_employee(id).get_total_working_hours(); }
 
 double Database::calculate_avg(vector < int > vals){
     double sum = 0;
@@ -693,13 +693,6 @@ bool Employee::does_work_on_day(int day) {
     return false;
 }
 
-int Employee::calculate_total_working_hours() {
-    int total = 0;
-    for (auto time : working_date_times)
-        total += time.get_length();
-    return total;
-}
-
 string Employee::get_level_humanized() {
     for (auto l : LEVELS)
         if (l.second == level)
@@ -738,7 +731,7 @@ void Employee::print_team_id() {
 void Employee::print_salary_report() {
     cout << "ID: " << id << endl;
     cout << "Name: " << name << endl;
-    cout << "Total Working Hours: " << calculate_total_working_hours() << endl;
+    cout << "Total Working Hours: " << get_total_working_hours() << endl;
     cout << "Total Earning: " << fixed << setprecision(0) << total_earning << endl;
     cout << "---" << endl;
 }
@@ -749,11 +742,11 @@ void Employee::print_detailed_salary_report(Database &db) {
     cout << "Age: " << get_age() << endl;
     cout << "Level: " << get_level_humanized() << endl;
     cout << "Team ID: ", print_team_id();
-    cout << "Total Working Hours: " << calculate_total_working_hours() << endl;
+    cout << "Total Working Hours: " << get_total_working_hours() << endl;
     cout << "Absent Days: " << count_absent_days() << endl;
     cout << "Salary: " << fixed << setprecision(0) << get_raw_salary() << endl; // gerd kon agha
     cout << "Bonus: " << fixed << setprecision(0) << get_bonus_amount(db) << endl;
-    cout << "Tax: " << fixed << setprecision(0) << rounded(get_tax_amount(db),1) << endl;
+    cout << "Tax: " << fixed << setprecision(0) << rounded(get_tax_amount(db),0) << endl;
     cout << "Total Earning: " << fixed << setprecision(0) << total_earning << endl;
 }
 
@@ -761,7 +754,7 @@ void Employee::join_team(Team team) { team_id = team.get_id(); }
 
 double Employee::get_bonus_amount(Database db) {
     if (!has_team()) return 0.0;
-    return raw_salary * (double)db.get_team(team_id).get_bonus_percentage() / 100.0;
+    return round(raw_salary * (double)db.get_team(team_id).get_bonus_percentage() / 100.0);
 }
 
 
